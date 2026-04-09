@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# AI contextualization documents (keep README.md visible)
+CHANGELOG.md
+CONTEXT.md
+DEBUG_REPORT.md
+GETTING_STARTED.md
+PROJECT_STATUS.md
