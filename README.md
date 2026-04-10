@@ -2,6 +2,11 @@
 
 Aplicacion mobile local-first para control financiero personal, con asistente IA hibrido (offline/online) y persistencia local en SQLite.
 
+[![Descargar APK](https://img.shields.io/badge/Descargar-APK-2ea44f?logo=android&logoColor=white)](https://github.com/joseph12n/Dumy/releases/latest/download/dumy.apk)
+[![Ultima Release](https://img.shields.io/github/v/release/joseph12n/Dumy?display_name=release)](https://github.com/joseph12n/Dumy/releases/latest)
+
+![Logo Dumy](./assets/images/icon.png)
+
 ## Descargar APK
 
 - Ultima release: https://github.com/joseph12n/Dumy/releases/latest
