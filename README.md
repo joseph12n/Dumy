@@ -1,51 +1,80 @@
 ﻿# Dumy
 
-Aplicacion mobile local-first para control financiero personal, con asistente IA hibrido (offline/online) y persistencia local en SQLite.
+Aplicacion mobile local-first para control financiero personal, con persistencia SQLite y asistente IA en modo hibrido u online.
 
 [![Descargar APK](https://img.shields.io/badge/Descargar-APK-2ea44f?logo=android&logoColor=white)](https://github.com/joseph12n/Dumy/releases/latest/download/dumy.apk)
 [![Ultima Release](https://img.shields.io/github/v/release/joseph12n/Dumy?display_name=release)](https://github.com/joseph12n/Dumy/releases/latest)
 
 ![Logo Dumy](./assets/images/icon.png)
 
-## Descargar APK
+## Descarga rapida
 
 - Ultima release: https://github.com/joseph12n/Dumy/releases/latest
-- Descarga directa del APK: https://github.com/joseph12n/Dumy/releases/latest/download/dumy.apk
+- APK directo: https://github.com/joseph12n/Dumy/releases/latest/download/dumy.apk
 
-Si la descarga directa falla, entra a Releases y baja el asset `dumy.apk` manualmente.
+Si el enlace directo falla, entra a Releases y descarga el asset dumy.apk.
 
-Status actual: Backend listo + Mobile UI activa + flujo de diseno simplificado.
+## Que incluye el proyecto
 
-## Stack
+- App React Native con Expo Router.
+- Estado local con Zustand.
+- Persistencia local en SQLite.
+- Capa IA con router de proveedores y puente de compatibilidad.
+- Backend Node opcional para IA online y/o Ollama local.
+- Flujo de build APK por EAS y publicacion automatizada en GitHub Releases.
 
-- React Native + Expo Router
-- TypeScript + Zustand
-- SQLite (expo-sqlite)
-- NativeWind (Tailwind para mobile)
-- Backend Node opcional para IA online (`npm run ai:backend`)
+## Stack tecnologico
 
-## Estructura principal
+- Expo SDK 54
+- React Native 0.81
+- React 19
+- TypeScript 5
+- NativeWind + Tailwind
+- expo-sqlite
+- Node.js para backend IA
 
-- `app/`: pantallas y navegacion mobile
-- `src/store/`: estado y acceso a base de datos
-- `src/hooks/`: hooks de consumo para componentes
-- `src/api/`: capa IA (router/proveedores/compatibilidad)
-- `src/components/common/`: UI reutilizable
-- `src/theme/`: runtime de diseno y tokens
-- `backend/`: gateway IA online (`/health`, `/ai/chat`)
+## Requisitos
 
-Nota: `web-test/` fue retirado del flujo activo y del repositorio versionado.
+- Node.js 20 o superior
+- npm 10 o superior
+- Cuenta Expo para builds en EAS
+- Android Studio o telefono Android para pruebas
 
-## Comandos
+Opcional para IA local real:
+
+- Ollama instalado y ejecutandose
+- Modelo descargado (ejemplo: qwen2.5:7b-instruct)
+
+## Instalacion de dependencias
 
 ```bash
 npm install
-npm start
 ```
 
-Comandos utiles:
+## Configuracion de entorno
+
+1. Crea el archivo .env desde el ejemplo:
 
 ```bash
+copy .env.example .env
+```
+
+2. Configura variables segun tu modo de uso:
+
+- EXPO_PUBLIC_AI_BACKEND_URL: URL del backend IA.
+- EXPO_PUBLIC_AI_MODE: hybrid u online.
+
+Variables del backend Node (opcionales):
+
+- AI_BACKEND_PORT (default: 8787)
+- AI_BACKEND_PROVIDER (default: ollama)
+- OLLAMA_BASE_URL (default: http://127.0.0.1:11434)
+- OLLAMA_MODEL (default: qwen2.5:7b-instruct)
+
+## Comandos principales
+
+```bash
+npm start
 npm run android
 npm run ios
 npm run web
@@ -53,58 +82,119 @@ npm run ai:backend
 npx tsc --noEmit
 ```
 
-## IA
+## Flujos de ejecucion
 
-- `src/api/llmBridge.ts` expone una interfaz estable para chatStore.
-- Internamente delega al router en `src/api/ai/`.
-- Modo offline primero; online cuando hay contexto de red y backend configurado.
+### 1) Desarrollo local mobile
 
-## Modo SaaS
+1. Ejecuta la app:
 
-Para usuarios finales, la app debe apuntar a un backend publico y no a un proceso local.
+```bash
+npm start -- --clear
+```
 
-- `EXPO_PUBLIC_AI_BACKEND_URL`: URL publica del backend IA.
-- `EXPO_PUBLIC_AI_MODE=online`: fuerza uso del backend publico y desactiva el fallback local.
-- En desarrollo puedes dejar `EXPO_PUBLIC_AI_MODE=hybrid` para usar backend publico cuando exista y mock local como respaldo.
+2. Abre en Android desde Expo Go o emulador.
+3. Si usas backend IA local, ejecuta en otra terminal:
 
-## Modos de uso
+```bash
+npm run ai:backend
+```
 
-- Modo local (misma red): app apuntando a IP LAN + backend en tu PC.
-- Modo remoto personal gratis: app apuntando a URL publica de tunel + backend en tu PC.
-- Modo SaaS online: app en `online` usando backend publico como unica fuente IA.
+4. Verifica salud del backend en:
 
-## Modo Gratis Personal
+- GET http://localhost:8787/health
 
-Si quieres usar la app tu y otra persona fuera de tu red sin pagar hosting, el flujo recomendado es este:
+### 2) Modo remoto personal gratis (sin hosting pago)
 
-- Compilas la app Android localmente y la instalas como APK.
-- Mantienes el backend en tu PC.
-- Publicas `http://localhost:8787` con un tunel gratuito como Cloudflare Tunnel.
-- Apuntas `EXPO_PUBLIC_AI_BACKEND_URL` a la URL publica del tunel.
-- Dejas `EXPO_PUBLIC_AI_MODE=online` para que la app use solo esa URL.
+1. Mantiene backend en tu PC.
+2. Publica el puerto 8787 con un tunel (ejemplo Cloudflare Tunnel).
+3. Configura en la app:
 
-Este enfoque no tiene costo de hosting, pero tu PC debe quedar encendida mientras se use la IA.
+- EXPO_PUBLIC_AI_BACKEND_URL=https://tu-url-publica
+- EXPO_PUBLIC_AI_MODE=online
 
-## Publicar nuevo APK en GitHub
+4. Mantiene tu PC encendida cuando se use la IA.
 
-1. Abre Actions en el repositorio.
-2. Ejecuta el workflow `Build Android APK`.
-3. Define `release_tag` (ejemplo: `apk-v3`).
-4. Al finalizar, el APK queda en Artifacts y en Releases.
+### 3) Modo SaaS online
 
-## Base de datos
+1. Backend desplegado de forma publica y estable.
+2. Build con:
 
-- DB local: `dumy.db`
-- Migraciones en `src/store/migrations.ts`
-- Repositorios SQL en `src/store/repositories/`
+- EXPO_PUBLIC_AI_MODE=online
+- EXPO_PUBLIC_AI_BACKEND_URL=https://api.tu-dominio.com
 
-## Estado del diseno
+## Flujo de actualizaciones y releases
 
-- Personalizacion visual por un solo flujo: `Cambio rapido (1 clic)`.
-- Presets activos en `src/theme/designRuntime.ts`.
+1. Crea rama feature.
+2. Implementa cambios y valida con tsc + pruebas manuales.
+3. Abre Pull Request y merge a main.
+4. Ejecuta workflow Build Android APK en Actions.
+5. Indica release_tag (ejemplo: apk-v4).
+6. Verifica que dumy.apk se publique en Releases y sea latest.
 
-## Documentacion de continuidad
+## Build APK local con EAS
 
-- `CONTEXT.md`: contexto tecnico y decisiones.
-- `CHANGELOG.md`: historial de cambios.
-- `PROJECT_STATUS.md`: estado global del proyecto.
+```bash
+npx eas-cli build --platform android --profile preview --wait
+```
+
+Nota: este comando genera el build en EAS, pero no publica automaticamente en GitHub Releases.
+
+## Build APK desde GitHub Actions
+
+Workflow: .github/workflows/build-apk.yml
+
+Requiere configurar en GitHub:
+
+- Secret: EXPO_TOKEN
+- Variable: EXPO_PUBLIC_AI_BACKEND_URL
+- Variable opcional: EXPO_PUBLIC_AI_MODE (si no se define, usa online)
+
+Resultado:
+
+- Artifact de workflow: dumy-apk
+- Release publicada con asset dumy.apk
+
+## Arquitectura rapida
+
+- app/: rutas y pantallas con Expo Router.
+- src/store/: estado, acceso a DB y repositorios.
+- src/api/llmBridge.ts: capa estable para consumo desde la app.
+- src/api/ai/: router, runtime y proveedores IA.
+- backend/server.js: API HTTP para chat IA.
+
+Endpoints backend:
+
+- GET /health
+- POST /ai/chat
+
+## Seguridad y privacidad
+
+- No subir .env al repositorio.
+- Mantener solo .env.example con placeholders.
+- No publicar tokens o claves en codigo ni docs.
+- Si expones backend por tunel, considera autenticacion y limite de peticiones.
+
+## Solucion de problemas
+
+- No actualiza icono/logo:
+  - Limpia cache con npm start -- --clear.
+  - Reinstala APK si cambiaste icon/splash/adaptive icon.
+- El backend no responde:
+  - Revisa npm run ai:backend.
+  - Valida /health y variables de entorno.
+- Build EAS falla:
+  - Verifica app.json, eas.json y credenciales Expo.
+
+## Documentacion adicional
+
+- CONTEXT.md
+- CHANGELOG.md
+- PROJECT_STATUS.md
+- CONTRIBUTING.md
+
+## Contribuir y licencia
+
+- Guia de contribucion: CONTRIBUTING.md
+- Plantilla de Pull Request: .github/PULL_REQUEST_TEMPLATE.md
+- Plantillas de Issues: .github/ISSUE_TEMPLATE/
+- Licencia del proyecto: LICENSE
