@@ -2,6 +2,13 @@
 
 Aplicacion mobile local-first para control financiero personal, con asistente IA hibrido (offline/online) y persistencia local en SQLite.
 
+## Descargar APK
+
+- Ultima release: https://github.com/joseph12n/Dumy/releases/latest
+- Descarga directa del APK: https://github.com/joseph12n/Dumy/releases/latest/download/dumy.apk
+
+Si la descarga directa falla, entra a Releases y baja el asset `dumy.apk` manualmente.
+
 Status actual: Backend listo + Mobile UI activa + flujo de diseno simplificado.
 
 ## Stack
@@ -55,6 +62,12 @@ Para usuarios finales, la app debe apuntar a un backend publico y no a un proces
 - `EXPO_PUBLIC_AI_MODE=online`: fuerza uso del backend publico y desactiva el fallback local.
 - En desarrollo puedes dejar `EXPO_PUBLIC_AI_MODE=hybrid` para usar backend publico cuando exista y mock local como respaldo.
 
+## Modos de uso
+
+- Modo local (misma red): app apuntando a IP LAN + backend en tu PC.
+- Modo remoto personal gratis: app apuntando a URL publica de tunel + backend en tu PC.
+- Modo SaaS online: app en `online` usando backend publico como unica fuente IA.
+
 ## Modo Gratis Personal
 
 Si quieres usar la app tu y otra persona fuera de tu red sin pagar hosting, el flujo recomendado es este:
@@ -66,6 +79,13 @@ Si quieres usar la app tu y otra persona fuera de tu red sin pagar hosting, el f
 - Dejas `EXPO_PUBLIC_AI_MODE=online` para que la app use solo esa URL.
 
 Este enfoque no tiene costo de hosting, pero tu PC debe quedar encendida mientras se use la IA.
+
+## Publicar nuevo APK en GitHub
+
+1. Abre Actions en el repositorio.
+2. Ejecuta el workflow `Build Android APK`.
+3. Define `release_tag` (ejemplo: `apk-v3`).
+4. Al finalizar, el APK queda en Artifacts y en Releases.
 
 ## Base de datos
 
