@@ -3,13 +3,13 @@
  * All dates are stored as ISO 8601 strings
  */
 
-export const ES_CO_LOCALE = 'es-CO' as const;
+export const ES_CO_LOCALE = "es-CO" as const;
 
 /**
  * Get today's date as ISO string (YYYY-MM-DD)
  */
 export function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split("T")[0];
 }
 
 /**
@@ -24,12 +24,12 @@ export function nowISO(): string {
  * Example: '2025-04-08' → 'martes, 8 de abril de 2025'
  */
 export function formatDateDisplay(isoDate: string): string {
-  const date = new Date(isoDate + 'T00:00:00Z'); // Add time to avoid timezone issues
-  return new Intl.DateTimeFormat('es-CO', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  const date = new Date(isoDate + "T00:00:00Z"); // Add time to avoid timezone issues
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   }).format(date);
 }
 
@@ -38,10 +38,10 @@ export function formatDateDisplay(isoDate: string): string {
  * Example: '2025-04-08' → '8 abr'
  */
 export function formatDateShort(isoDate: string): string {
-  const date = new Date(isoDate + 'T00:00:00Z');
-  return new Intl.DateTimeFormat('es-CO', {
-    month: 'short',
-    day: 'numeric',
+  const date = new Date(isoDate + "T00:00:00Z");
+  return new Intl.DateTimeFormat("es-CO", {
+    month: "short",
+    day: "numeric",
   }).format(date);
 }
 
@@ -50,10 +50,10 @@ export function formatDateShort(isoDate: string): string {
  * Example: '2025-04-08' → 'abril 2025'
  */
 export function formatMonthYear(isoDate: string): string {
-  const date = new Date(isoDate + 'T00:00:00Z');
-  return new Intl.DateTimeFormat('es-CO', {
-    year: 'numeric',
-    month: 'long',
+  const date = new Date(isoDate + "T00:00:00Z");
+  return new Intl.DateTimeFormat("es-CO", {
+    year: "numeric",
+    month: "long",
   }).format(date);
 }
 
@@ -64,26 +64,24 @@ export function getMonthRange(
   year: number,
   month: number,
 ): { from: string; to: string } {
-  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month, 0).getDate();
-  const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   return { from, to };
 }
 
 /**
  * Get Monday-Sunday range containing the given date
  */
-export function getWeekRange(
-  date: Date,
-): { from: string; to: string } {
+export function getWeekRange(date: Date): { from: string; to: string } {
   const dayOfWeek = date.getDay();
   const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust for Monday start
 
   const monday = new Date(date.setDate(diff));
   const sunday = new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000);
 
-  const from = monday.toISOString().split('T')[0];
-  const to = sunday.toISOString().split('T')[0];
+  const from = monday.toISOString().split("T")[0];
+  const to = sunday.toISOString().split("T")[0];
 
   return { from, to };
 }
@@ -125,7 +123,7 @@ export function getDaysElapsedInMonth(
  * Check if two ISO dates represent the same day
  */
 export function isSameDay(a: string, b: string): boolean {
-  return a.split('T')[0] === b.split('T')[0];
+  return a.split("T")[0] === b.split("T")[0];
 }
 
 /**
@@ -133,57 +131,58 @@ export function isSameDay(a: string, b: string): boolean {
  * Example: 'hace 5 minutos', 'ayer', 'hace 2 semanas'
  */
 export function getRelativeTimeLabel(isoTimestamp: string): string {
+  if (!isoTimestamp || typeof isoTimestamp !== "string") {
+    return "ahora";
+  }
+
   const date = new Date(isoTimestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "ahora";
+  }
+
   const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const diffSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  const seconds = Math.abs(diffSeconds);
+  const isFuture = diffSeconds < 0;
 
-  // Helper to get relative time
-  let interval = seconds / 31536000; // years
-  if (interval > 1) {
-    return new Intl.RelativeTimeFormat('es-CO').format(
-      -Math.floor(interval),
-      'year',
-    );
+  if (seconds < 5) return "ahora";
+
+  const formatLabel = (value: number, unit: string) => {
+    const plural = value === 1 ? unit : `${unit}s`;
+    return isFuture ? `en ${value} ${plural}` : `hace ${value} ${plural}`;
+  };
+
+  if (seconds < 60) {
+    return formatLabel(seconds, "segundo");
   }
 
-  interval = seconds / 2592000; // months
-  if (interval > 1) {
-    return new Intl.RelativeTimeFormat('es-CO').format(
-      -Math.floor(interval),
-      'month',
-    );
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return formatLabel(minutes, "minuto");
   }
 
-  interval = seconds / 86400; // days
-  if (interval > 1) {
-    return new Intl.RelativeTimeFormat('es-CO').format(
-      -Math.floor(interval),
-      'day',
-    );
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return formatLabel(hours, "hora");
   }
 
-  interval = seconds / 3600; // hours
-  if (interval > 1) {
-    return new Intl.RelativeTimeFormat('es-CO').format(
-      -Math.floor(interval),
-      'hour',
-    );
+  const days = Math.floor(hours / 24);
+  if (days < 30) {
+    return formatLabel(days, "dia");
   }
 
-  interval = seconds / 60; // minutes
-  if (interval > 1) {
-    return new Intl.RelativeTimeFormat('es-CO').format(
-      -Math.floor(interval),
-      'minute',
-    );
+  const months = Math.floor(days / 30);
+  if (months < 12) {
+    return formatLabel(months, "mes");
   }
 
-  return new Intl.RelativeTimeFormat('es-CO').format(-Math.floor(seconds), 'second');
+  const years = Math.floor(days / 365);
+  return formatLabel(years, "ano");
 }
 
 /**
  * Parse ISO date and return Date object (handles timezone correctly)
  */
 export function parseISODate(isoDate: string): Date {
-  return new Date(isoDate + 'T00:00:00Z');
+  return new Date(isoDate + "T00:00:00Z");
 }

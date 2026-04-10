@@ -93,7 +93,7 @@ export const budgetRepository = {
     input: Partial<UpdateBudgetInput>,
   ): Promise<Budget | null> {
     const updates: string[] = [];
-    const values: unknown[] = [];
+    const values: Array<string | number | null> = [];
 
     if (input.limitAmount !== undefined) {
       updates.push("limit_amount = ?");

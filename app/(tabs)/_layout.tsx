@@ -1,59 +1,134 @@
-import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { useColorScheme } from "@/components/useColorScheme";
+import { useSettingsStore } from "@/src/store/settingsStore";
+import {
+    getCornerRadius,
+    resolveRuntimeDesign,
+    scaleFont,
+} from "@/src/theme/designRuntime";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Tabs } from "expo-router";
+import React from "react";
+import { View } from "react-native";
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
+function TabIcon({
+  name,
+  color,
+  focused,
+}: {
+  name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
+  focused: boolean;
 }) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+  return <FontAwesome size={22} name={name} color={color} />;
+}
+
+function AddTabIcon({
+  focused,
+  accentColor,
+  cornerRadius,
+}: {
+  focused: boolean;
+  accentColor: string;
+  cornerRadius: number;
+}) {
+  return (
+    <View
+      className="w-12 h-12 rounded-full items-center justify-center -mt-3"
+      style={{
+        backgroundColor: focused ? accentColor : `${accentColor}CC`,
+        borderRadius: cornerRadius,
+      }}
+    >
+      <FontAwesome name="plus" size={22} color="#fff" />
+    </View>
+  );
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const systemScheme = useColorScheme();
+  const settings = useSettingsStore((s) => s.settings);
+  const selectedTheme = settings["theme"] || "system";
+  const design = resolveRuntimeDesign(settings);
+  const accentColor = design.accentColor;
+  const isDark =
+    (selectedTheme === "system" ? systemScheme : selectedTheme) === "dark";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        headerShown: false,
+        tabBarActiveTintColor: accentColor,
+        tabBarInactiveTintColor: isDark
+          ? design.palette.borderLight
+          : "#907898",
+        tabBarStyle: {
+          backgroundColor: isDark
+            ? design.palette.surfaceDark
+            : design.palette.backgroundLight,
+          borderTopColor: isDark
+            ? design.palette.borderDark
+            : design.palette.borderLight,
+          borderTopWidth: 1,
+          height: design.density === "compact" ? 56 : 62,
+          paddingBottom: 8,
+          paddingTop: design.density === "compact" ? 2 : 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: scaleFont(11, design.fontScale),
+          fontWeight: "600",
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          title: "Inicio",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="home" color={color} focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="history"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: "Historial",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="clock-o" color={color} focused={focused} />
+          ),
         }}
       />
+      <Tabs.Screen
+        name="add"
+        options={{
+          title: "",
+          tabBarIcon: ({ focused }) => (
+            <AddTabIcon
+              focused={focused}
+              accentColor={accentColor}
+              cornerRadius={getCornerRadius(design.radius, "pill")}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat IA",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="comments" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Perfil",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="user" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen name="scan" options={{ href: null }} />
     </Tabs>
   );
 }

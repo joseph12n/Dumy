@@ -32,6 +32,9 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+backend/.env
+backend/.env.*
 
 # typescript
 *.tsbuildinfo
@@ -39,6 +42,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# deprecated workspace
+web-test/
+.claude/
+.github/
 
 # AI contextualization documents (keep README.md visible)
 CHANGELOG.md

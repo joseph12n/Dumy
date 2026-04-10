@@ -3,17 +3,31 @@
  * Wraps statsStore and triggers computations automatically
  */
 
-import { useEffect } from 'react';
-import { useStatsStore } from '../store/statsStore';
-import { BudgetStatus, CategoryBreakdown, PeriodStats, TrendData } from '../store/types';
-import { getMonthRange } from '../utils/dates';
+import { useEffect } from "react";
+import { useCategoryStore } from "../store/categoryStore";
+import { useStatsStore } from "../store/statsStore";
+import { useTransactionStore } from "../store/transactionStore";
+import {
+    BudgetStatus,
+    CategoryBreakdown,
+    PeriodStats,
+    TrendData,
+} from "../store/types";
+import { getMonthRange } from "../utils/dates";
 
 /**
  * Get all monthly statistics with automatic computation
  * Triggers recomputation when month changes
  */
 export function useMonthlyStats(year: number, month: number) {
-  const statsStore = useStatsStore();
+  const computeStatsForPeriod = useStatsStore((s) => s.computeStatsForPeriod);
+  const computeTrends = useStatsStore((s) => s.computeTrends);
+  const computeBudgetStatus = useStatsStore((s) => s.computeBudgetStatus);
+
+  const transactionCount = useTransactionStore((s) => s.transactions.length);
+  const budgetCount = useCategoryStore((s) => s.budgets.length);
+  const categoryCount = useCategoryStore((s) => s.categories.length);
+
   const currentPeriodStats = useStatsStore((s) => s.currentPeriodStats);
   const categoryBreakdown = useStatsStore((s) => s.categoryBreakdown);
   const trends = useStatsStore((s) => s.trends);
@@ -22,10 +36,19 @@ export function useMonthlyStats(year: number, month: number) {
 
   useEffect(() => {
     const { from, to } = getMonthRange(year, month);
-    statsStore.computeStatsForPeriod(from, to);
-    statsStore.computeTrends();
-    statsStore.computeBudgetStatus();
-  }, [year, month, statsStore]);
+    computeStatsForPeriod(from, to);
+    computeTrends();
+    computeBudgetStatus();
+  }, [
+    year,
+    month,
+    transactionCount,
+    budgetCount,
+    categoryCount,
+    computeStatsForPeriod,
+    computeTrends,
+    computeBudgetStatus,
+  ]);
 
   return {
     periodStats: currentPeriodStats,
@@ -67,7 +90,9 @@ export function useBudgetStatus(): BudgetStatus[] {
 /**
  * Get status for a specific category's budget
  */
-export function useCategoryBudgetStatus(categoryId: string): BudgetStatus | undefined {
+export function useCategoryBudgetStatus(
+  categoryId: string,
+): BudgetStatus | undefined {
   const budgetStatus = useStatsStore((s) => s.budgetStatus);
   return budgetStatus.find((b) => b.categoryId === categoryId);
 }

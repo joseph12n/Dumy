@@ -3,8 +3,9 @@
  * Wraps settingsStore for component consumption
  */
 
-import { useSettingsStore } from '../store/settingsStore';
-import { ThemeType } from '../store/types';
+import { useSettingsStore } from "../store/settingsStore";
+import { ThemeType } from "../store/types";
+import { UnifiedDesignPreset } from "../theme/designRuntime";
 
 /**
  * Get all settings and set/get operations
@@ -47,7 +48,10 @@ export function useOnboardingCompleted(): boolean {
 /**
  * Get a specific setting value
  */
-export function useSetting(key: string, defaultValue?: string): string | undefined {
+export function useSetting(
+  key: string,
+  defaultValue?: string,
+): string | undefined {
   return useSettingsStore((s) => s.getSetting(key, defaultValue));
 }
 
@@ -72,7 +76,7 @@ export function useSetTheme() {
   const setSetting = useSettingsStore((s) => s.setSetting);
 
   return async (theme: ThemeType) => {
-    await setSetting('theme', theme);
+    await setSetting("theme", theme);
   };
 }
 
@@ -83,7 +87,7 @@ export function useSetCurrencyLocale() {
   const setSetting = useSettingsStore((s) => s.setSetting);
 
   return async (locale: string) => {
-    await setSetting('currency_locale', locale);
+    await setSetting("currency_locale", locale);
   };
 }
 
@@ -94,7 +98,7 @@ export function useCompleteOnboarding() {
   const setSetting = useSettingsStore((s) => s.setSetting);
 
   return async () => {
-    await setSetting('onboarding_completed', 'true');
+    await setSetting("onboarding_completed", "true");
   };
 }
 
@@ -106,5 +110,29 @@ export function useUpdateSetting() {
 
   return async (key: string, value: string) => {
     await setSetting(key, value);
+  };
+}
+
+/**
+ * Apply a full design preset in one click
+ */
+export function useApplyUnifiedDesignPreset() {
+  const setSetting = useSettingsStore((s) => s.setSetting);
+
+  return async (
+    preset: UnifiedDesignPreset,
+    options?: { favoriteAccentOverride?: string | null },
+  ) => {
+    const accent = options?.favoriteAccentOverride || preset.accentColor;
+
+    await Promise.all([
+      setSetting("theme", preset.theme as ThemeType),
+      setSetting("ui_preset", preset.uiPreset),
+      setSetting("accent_color", accent),
+      setSetting("ui_density", preset.density),
+      setSetting("ui_radius", preset.radius),
+      setSetting("ui_font_scale", preset.fontScale),
+      setSetting("ui_preset_last", preset.id),
+    ]);
   };
 }

@@ -90,7 +90,7 @@ export const transactionRepository = {
   ): Promise<Transaction | null> {
     const now = nowISO();
     const updates: string[] = [];
-    const values: unknown[] = [];
+    const values: Array<string | number | null> = [];
 
     if (input.amount !== undefined) {
       updates.push("amount = ?");

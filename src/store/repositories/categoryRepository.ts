@@ -95,7 +95,7 @@ export const categoryRepository = {
     input: Partial<UpdateCategoryInput>,
   ): Promise<Category | null> {
     const updates: string[] = [];
-    const values: unknown[] = [];
+    const values: Array<string | number | null> = [];
 
     if (input.name !== undefined) {
       updates.push("name = ?");
