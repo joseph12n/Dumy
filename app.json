@@ -29,10 +29,12 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-sqlite"
-    ],
+    "plugins": ["expo-router", "expo-sqlite"],
+    "extra": {
+      "eas": {
+        "projectId": "955c54fd-e497-4f60-8e3f-9d2050d7784b"
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

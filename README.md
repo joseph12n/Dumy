@@ -47,6 +47,26 @@ npx tsc --noEmit
 - Internamente delega al router en `src/api/ai/`.
 - Modo offline primero; online cuando hay contexto de red y backend configurado.
 
+## Modo SaaS
+
+Para usuarios finales, la app debe apuntar a un backend publico y no a un proceso local.
+
+- `EXPO_PUBLIC_AI_BACKEND_URL`: URL publica del backend IA.
+- `EXPO_PUBLIC_AI_MODE=online`: fuerza uso del backend publico y desactiva el fallback local.
+- En desarrollo puedes dejar `EXPO_PUBLIC_AI_MODE=hybrid` para usar backend publico cuando exista y mock local como respaldo.
+
+## Modo Gratis Personal
+
+Si quieres usar la app tu y otra persona fuera de tu red sin pagar hosting, el flujo recomendado es este:
+
+- Compilas la app Android localmente y la instalas como APK.
+- Mantienes el backend en tu PC.
+- Publicas `http://localhost:8787` con un tunel gratuito como Cloudflare Tunnel.
+- Apuntas `EXPO_PUBLIC_AI_BACKEND_URL` a la URL publica del tunel.
+- Dejas `EXPO_PUBLIC_AI_MODE=online` para que la app use solo esa URL.
+
+Este enfoque no tiene costo de hosting, pero tu PC debe quedar encendida mientras se use la IA.
+
 ## Base de datos
 
 - DB local: `dumy.db`

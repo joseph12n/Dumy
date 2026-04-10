@@ -3,7 +3,7 @@ const { URL } = require("url");
 
 const PORT = Number(process.env.AI_BACKEND_PORT || 8787);
 const AI_BACKEND_PROVIDER = String(
-  process.env.AI_BACKEND_PROVIDER || "fallback",
+  process.env.AI_BACKEND_PROVIDER || "ollama",
 ).toLowerCase();
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5:7b-instruct";
@@ -37,16 +37,30 @@ function collectBody(req) {
 
 function createOfflineFallback(prompt) {
   const normalized = String(prompt || "").toLowerCase();
+  const suggestions = [
+    "Si quieres, te propongo un micro-plan para los próximos 7 días.",
+    "También puedo resumirte esto por categorías en una tabla corta.",
+    "Si me das un objetivo mensual, te lo convierto en metas semanales.",
+  ];
+  const suggestion = suggestions[normalized.length % suggestions.length];
 
   if (normalized.includes("presupuesto")) {
-    return "Con base en tu presupuesto, te conviene revisar categorías variables y automatizar ahorros pequeños.";
+    return `Con base en tu presupuesto, te conviene ajustar categorías variables antes de tocar gastos fijos. ${suggestion}`;
   }
 
-  if (normalized.includes("internet") || normalized.includes("actual")) {
-    return "Puedo responder con información fresca cuando conectemos este backend a una búsqueda web real.";
+  if (
+    normalized.includes("internet") ||
+    normalized.includes("actual") ||
+    normalized.includes("hoy")
+  ) {
+    return `Ahora mismo estoy en fallback local del backend; aún así puedo darte una guía útil con tus datos recientes. ${suggestion}`;
   }
 
-  return "Respuesta híbrida lista: este backend ya recibe consultas y está preparado para conectar un modelo o un flujo RAG.";
+  if (normalized.includes("ahorro") || normalized.includes("gasto")) {
+    return `Para mejorar rápido: define tope por categoría variable, revisa dos gastos evitables por semana y automatiza un ahorro pequeño. ${suggestion}`;
+  }
+
+  return `Respuesta híbrida activa: el backend recibe consultas y puede operar con modelo real o fallback contextual. ${suggestion}`;
 }
 
 async function generateWithOllama(prompt, maxTokens, temperature) {

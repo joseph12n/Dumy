@@ -46,7 +46,6 @@ backend/.env.*
 # deprecated workspace
 web-test/
 .claude/
-.github/
 
 # AI contextualization documents (keep README.md visible)
 CHANGELOG.md

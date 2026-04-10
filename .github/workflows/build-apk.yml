@@ -1,0 +1,74 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub release tag for APK"
+        required: true
+        default: "apk-latest"
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_AI_BACKEND_URL: ${{ vars.EXPO_PUBLIC_AI_BACKEND_URL }}
+      EXPO_PUBLIC_AI_MODE: ${{ vars.EXPO_PUBLIC_AI_MODE || 'online' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Validate required config
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Missing EXPO_TOKEN secret in GitHub repository settings."
+            exit 1
+          fi
+          if [ -z "$EXPO_PUBLIC_AI_BACKEND_URL" ]; then
+            echo "::error::Missing EXPO_PUBLIC_AI_BACKEND_URL repository variable."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Build APK with EAS
+        run: eas build --platform android --profile preview --non-interactive --wait --json > build-result.json
+
+      - name: Download APK artifact
+        run: |
+          APK_URL=$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync('build-result.json','utf8')); const build=Array.isArray(data)?data[0]:data; process.stdout.write(build?.artifacts?.buildUrl || '');")
+          if [ -z "$APK_URL" ]; then
+            echo "::error::Could not read APK URL from EAS build result."
+            cat build-result.json
+            exit 1
+          fi
+          curl -L "$APK_URL" -o dumy.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dumy-apk
+          path: dumy.apk
+
+      - name: Publish GitHub Release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: Dumy APK (${{ github.event.inputs.release_tag }})
+          files: dumy.apk
+          make_latest: true

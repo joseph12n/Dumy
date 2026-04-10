@@ -1,5 +1,6 @@
 import { localOpenSourceProvider } from "./providers/localProvider";
 import { onlineBackendProvider } from "./providers/onlineProvider";
+import { getAIRuntimeConfig } from "./runtime";
 import {
     AIGenerationOptions,
     AIProvider,
@@ -35,11 +36,28 @@ export class AIRouter {
 
   selectProvider(options?: AIGenerationOptions): AISelectionResult {
     const requestContext = resolveRequestContext(options);
+    const runtime = getAIRuntimeConfig();
+    const onlineAvailable = this.onlineProvider.isAvailable();
+    const localAvailable = this.localProvider.isAvailable();
+
+    if (runtime.mode === "online") {
+      if (onlineAvailable) {
+        return {
+          providerId: this.onlineProvider.id,
+          modelId: this.onlineProvider.describe().id,
+          reason: "SaaS mode forces public backend usage.",
+        };
+      }
+
+      throw new Error(
+        "SaaS mode is active but the public AI backend URL is not available.",
+      );
+    }
 
     if (
       requestContext.allowNetwork &&
       (requestContext.mode === "online" || requestContext.freshDataRequired) &&
-      this.onlineProvider.isAvailable()
+      onlineAvailable
     ) {
       return {
         providerId: this.onlineProvider.id,
@@ -49,7 +67,20 @@ export class AIRouter {
       };
     }
 
-    if (this.localProvider.isAvailable()) {
+    if (
+      requestContext.allowNetwork &&
+      requestContext.mode === "hybrid" &&
+      onlineAvailable
+    ) {
+      return {
+        providerId: this.onlineProvider.id,
+        modelId: this.onlineProvider.describe().id,
+        reason:
+          "Hybrid mode prefers online provider when backend is available.",
+      };
+    }
+
+    if (localAvailable) {
       return {
         providerId: this.localProvider.id,
         modelId: this.localProvider.describe().id,
@@ -57,7 +88,7 @@ export class AIRouter {
       };
     }
 
-    if (this.onlineProvider.isAvailable()) {
+    if (onlineAvailable) {
       return {
         providerId: this.onlineProvider.id,
         modelId: this.onlineProvider.describe().id,

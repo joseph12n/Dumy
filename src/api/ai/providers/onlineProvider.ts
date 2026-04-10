@@ -1,18 +1,11 @@
 import { AI_MODEL_CATALOG, DEFAULT_ONLINE_MODEL_ID } from "../catalog";
+import { getAIRuntimeConfig } from "../runtime";
 import {
     AIGenerationOptions,
     AIModelProfile,
     AIProvider,
     AIResponseEnvelope,
 } from "../types";
-
-function readBackendBaseUrl(): string {
-  const runtime = globalThis as typeof globalThis & {
-    process?: { env?: Record<string, string | undefined> };
-  };
-
-  return runtime.process?.env?.EXPO_PUBLIC_AI_BACKEND_URL?.trim() ?? "";
-}
 
 function buildResponseMetadata(modelId: string) {
   return {
@@ -57,7 +50,7 @@ export class OnlineBackendProvider implements AIProvider {
   }
 
   isAvailable(): boolean {
-    return readBackendBaseUrl().length > 0;
+    return getAIRuntimeConfig().backendUrl.length > 0;
   }
 
   capabilities() {
@@ -73,15 +66,15 @@ export class OnlineBackendProvider implements AIProvider {
     prompt: string,
     options?: AIGenerationOptions,
   ): Promise<AIResponseEnvelope> {
-    const baseUrl = readBackendBaseUrl();
+    const { backendUrl } = getAIRuntimeConfig();
 
-    if (!baseUrl) {
+    if (!backendUrl) {
       throw new Error(
         "Online AI backend URL is not configured. Set EXPO_PUBLIC_AI_BACKEND_URL.",
       );
     }
 
-    const response = await fetch(`${baseUrl}/ai/chat`, {
+    const response = await fetch(`${backendUrl}/ai/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
