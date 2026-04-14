@@ -1,59 +1,29 @@
 import { create } from "zustand";
-import { AIRequestContext } from "../api/ai/types";
+import { recognizeText } from "../api/ai/ocrEngine";
+import { parseReceipt, summarizeReceipt } from "../api/ai/receiptParser";
 import { buildChatContext } from "../api/chatContextBuilder";
 import { llmBridge } from "../api/llmBridge";
 import { buildFullPrompt, SYSTEM_PROMPT } from "../api/promptTemplates";
 import { generateId } from "../utils/uuid";
 import { getDatabase } from "./database";
 import { chatRepository } from "./repositories/chatRepository";
-import { ChatMessage, CreateChatMessageInput } from "./types";
-
-const FRESH_DATA_KEYWORDS = [
-  "hoy",
-  "actual",
-  "actualizado",
-  "internet",
-  "noticia",
-  "noticias",
-  "precio",
-  "trm",
-  "dolar",
-  "buscar",
-  "google",
-  "web",
-  "tendencia mundial",
-  "mercado hoy",
-];
-
-function buildChatRequestContext(
-  content: string,
-  sessionId: string,
-): AIRequestContext {
-  const normalized = content.toLowerCase();
-  const freshDataRequired = FRESH_DATA_KEYWORDS.some((keyword) =>
-    normalized.includes(keyword),
-  );
-
-  return {
-    source: "chat",
-    mode: freshDataRequired ? "online" : "hybrid",
-    freshDataRequired,
-    allowNetwork: true,
-    conversationId: sessionId,
-  };
-}
+import { ChatMessage, CreateChatMessageInput, ReceiptData } from "./types";
 
 interface ChatState {
   messages: ChatMessage[];
   currentSessionId: string;
   isResponding: boolean;
   error: string | null;
+  /** Last scanned receipt available for analysis */
+  lastReceipt: ReceiptData | null;
 
   // Actions
   initSession: () => void;
   loadSession: (sessionId: string) => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, imageUri?: string) => Promise<void>;
   clearSession: () => Promise<void>;
+  /** Inject a scanned receipt into the conversation */
+  attachReceipt: (receipt: ReceiptData) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -61,6 +31,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   currentSessionId: "",
   isResponding: false,
   error: null,
+  lastReceipt: null,
 
   initSession: () => {
     const sessionId = generateId();
@@ -68,6 +39,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: [],
       currentSessionId: sessionId,
       error: null,
+      lastReceipt: null,
     });
     console.log("[ChatStore] Session initialized:", sessionId);
   },
@@ -95,7 +67,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (content) => {
+  attachReceipt: (receipt: ReceiptData) => {
+    set({ lastReceipt: receipt });
+    console.log("[ChatStore] Receipt attached:", receipt.vendor ?? "unknown");
+  },
+
+  sendMessage: async (content, imageUri) => {
     const state = get();
 
     if (!state.currentSessionId) {
@@ -108,10 +85,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const db = await getDatabase();
 
-      // 1. Insert user message
+      // 1. If image attached, run OCR + parse
+      let receipt = state.lastReceipt ?? undefined;
+      let displayContent = content;
+
+      if (imageUri) {
+        const ocrResult = await recognizeText(imageUri);
+        if (ocrResult.success && ocrResult.text.length > 0) {
+          receipt = parseReceipt(ocrResult.text);
+          set({ lastReceipt: receipt });
+          const summary = summarizeReceipt(receipt);
+          displayContent = content
+            ? `${content}\n\n[Recibo escaneado]\n${summary}`
+            : `[Recibo escaneado]\n${summary}`;
+        } else if (ocrResult.error) {
+          displayContent = content
+            ? `${content}\n\n[No se pudo leer la imagen: ${ocrResult.error}]`
+            : `[No se pudo leer la imagen: ${ocrResult.error}]`;
+        }
+      }
+
+      // 2. Insert user message
       const userMessageInput: CreateChatMessageInput = {
         role: "user",
-        content,
+        content: displayContent,
         sessionId: state.currentSessionId,
       };
       const userMessage = await chatRepository.insertMessage(
@@ -119,12 +116,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         userMessageInput,
       );
       set((s) => ({ messages: [...s.messages, userMessage] }));
-      console.log("[ChatStore] User message added");
 
-      // 2. Build context from current financial data
+      // 3. Build context from current financial data
       const context = await buildChatContext(5);
 
-      // 3. Build conversation history for the model (exclude current user message)
+      // 4. Build conversation history
       const history = state.messages
         .filter((m) => m.sessionId === state.currentSessionId)
         .sort(
@@ -137,27 +133,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
           content: msg.content,
         }));
 
-      // 4. Build full prompt for LLM
+      // 5. Build full prompt
       const fullPrompt = buildFullPrompt(
         SYSTEM_PROMPT,
         context,
         history,
-        content,
+        displayContent,
       );
 
-      // 5. Get response from LLM
-      const requestContext = buildChatRequestContext(
-        content,
-        state.currentSessionId,
-      );
+      // 6. Inject context into the local provider
+      llmBridge.setContext(context, receipt);
 
+      // 7. Get response (offline, skill-based)
       const response = await llmBridge.generateResponse(fullPrompt, {
         maxTokens: 512,
         temperature: 0.9,
-        requestContext,
+        requestContext: {
+          source: imageUri ? "scan" : "chat",
+          conversationId: state.currentSessionId,
+          imageUri,
+        },
       });
 
-      // 6. Insert assistant message
+      // 8. Insert assistant message
       const assistantMessageInput: CreateChatMessageInput = {
         role: "assistant",
         content: response,
@@ -168,7 +166,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         assistantMessageInput,
       );
       set((s) => ({ messages: [...s.messages, assistantMessage] }));
-      console.log("[ChatStore] Assistant message added");
 
       set({ isResponding: false });
     } catch (error) {

@@ -1,34 +1,46 @@
+import { FadeInView, ScalePress } from "@/src/components/animated";
 import { BrandHeader } from "@/src/components/common";
 import { useChat } from "@/src/hooks/useChat";
 import { useSetting } from "@/src/hooks/useSettings";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import {
+    applyShadow,
     getCornerRadius,
     resolveRuntimeDesign,
     scaleFont,
+    toRgba,
 } from "@/src/theme/designRuntime";
 import { getRelativeTimeLabel } from "@/src/utils/dates";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ChatScreen() {
-  const { messages, isResponding, error, sendMessage, clearSession } =
-    useChat();
+  const {
+    messages,
+    isResponding,
+    error,
+    sendMessage,
+    clearSession,
+    lastReceipt,
+  } = useChat();
   const settings = useSettingsStore((s) => s.settings);
   const design = resolveRuntimeDesign(settings);
   const profileName = useSetting("profile_name", "");
   const [input, setInput] = useState("");
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const status = error
@@ -44,17 +56,43 @@ export default function ChatScreen() {
           textClassName: "text-candy-text-secondary",
         }
       : {
-          label: "Listo en modo hibrido",
+          label: "Listo en modo offline",
           dotClassName: "bg-candy-blue",
           textClassName: "text-candy-text-secondary",
         };
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || isResponding) return;
+    const image = attachedImage;
+
+    if (!text && !image && !lastReceipt) return;
+    if (isResponding) return;
+
     setInput("");
-    await sendMessage(text);
+    setAttachedImage(null);
+
+    const messageText =
+      text || (image ? "Analiza esta imagen" : "Analiza el recibo adjunto");
+    await sendMessage(messageText, image ?? undefined);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const handleAttachImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]?.uri) {
+        setAttachedImage(result.assets[0].uri);
+      }
+    } catch (err) {
+      console.error("[Chat] Error picking image:", err);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setAttachedImage(null);
   };
 
   return (
@@ -88,124 +126,264 @@ export default function ChatScreen() {
         >
           {/* Welcome Message */}
           {messages.length === 0 && (
-            <View className="items-center py-8">
-              <View className="w-16 h-16 rounded-full bg-candy-pink-pale items-center justify-center mb-4">
-                <FontAwesome name="comments" size={28} color="#e040a0" />
-              </View>
-              <Text
-                className="text-candy-text font-bold text-center mb-2"
-                style={{ fontSize: scaleFont(20, design.fontScale) }}
-              >
-                {profileName
-                  ? `Hola ${profileName}, soy Dumy`
-                  : "Hola! Soy Dumy"}
-              </Text>
-              <Text
-                className="text-candy-text-secondary text-center max-w-[280px]"
-                style={{ fontSize: scaleFont(13, design.fontScale) }}
-              >
-                Tu asistente financiero personal. Preguntame sobre tus gastos,
-                ahorro o presupuestos.
-              </Text>
+            <FadeInView delay={200} slideFrom={20}>
+              <View className="items-center py-8">
+                <LinearGradient
+                  colors={design.gradients.hero.colors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 16,
+                    ...applyShadow(design.shadows.hero),
+                  }}
+                >
+                  <FontAwesome name="comments" size={28} color="#fff" />
+                </LinearGradient>
+                <Text
+                  className="text-candy-text font-bold text-center mb-2"
+                  style={{ fontSize: scaleFont(20, design.fontScale) }}
+                >
+                  {profileName
+                    ? `Hola ${profileName}, soy Dumy`
+                    : "Hola! Soy Dumy"}
+                </Text>
+                <Text
+                  className="text-candy-text-secondary text-center max-w-[280px]"
+                  style={{ fontSize: scaleFont(13, design.fontScale) }}
+                >
+                  Tu asistente financiero offline. Preguntame sobre tus gastos,
+                  ahorro, presupuestos, o adjunta una foto de un recibo.
+                </Text>
 
-              {/* Quick Prompts */}
-              <View className="mt-6 gap-2 w-full">
-                {[
-                  "Como van mis gastos este mes?",
-                  "En que categoria gasto mas?",
-                  "Dame consejos para ahorrar",
-                ].map((prompt) => (
-                  <TouchableOpacity
-                    key={prompt}
-                    onPress={() => {
-                      setInput(prompt);
-                    }}
-                    className="px-4 py-3 border"
-                    style={{
-                      backgroundColor: design.palette.surfaceLight,
-                      borderColor: design.palette.borderLight,
-                      borderRadius: getCornerRadius(design.radius, "card"),
-                    }}
-                  >
-                    <Text
-                      className="text-candy-text"
-                      style={{ fontSize: scaleFont(13, design.fontScale) }}
+                {/* Quick Prompts */}
+                <View className="mt-6 gap-2 w-full">
+                  {[
+                    "Como van mis gastos este mes?",
+                    "Dame tips de ahorro",
+                    "Que me recomiendas?",
+                    "Hay alertas importantes?",
+                    "Que puedes hacer?",
+                  ].map((prompt, idx) => (
+                    <FadeInView
+                      key={prompt}
+                      delay={350 + idx * 60}
+                      slideFrom={12}
                     >
-                      {prompt}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <ScalePress
+                        onPress={() => setInput(prompt)}
+                        scaleValue={0.98}
+                        className="px-4 py-3 border"
+                        style={{
+                          backgroundColor: toRgba(
+                            design.palette.surfaceLight,
+                            0.88,
+                          ),
+                          borderColor: design.palette.borderLight,
+                          borderRadius: getCornerRadius(design.radius, "card"),
+                          ...applyShadow(design.shadows.card),
+                        }}
+                      >
+                        <Text
+                          className="text-candy-text"
+                          style={{ fontSize: scaleFont(13, design.fontScale) }}
+                        >
+                          {prompt}
+                        </Text>
+                      </ScalePress>
+                    </FadeInView>
+                  ))}
+                </View>
               </View>
-            </View>
+            </FadeInView>
+          )}
+
+          {/* Receipt notification */}
+          {lastReceipt && messages.length === 0 && (
+            <FadeInView delay={100}>
+              <View
+                className="px-4 py-3 mb-3 border"
+                style={{
+                  borderRadius: getCornerRadius(design.radius, "card"),
+                  borderColor: design.palette.primary,
+                  backgroundColor: `${design.palette.primary}10`,
+                }}
+              >
+                <Text
+                  className="font-semibold"
+                  style={{
+                    color: design.palette.primary,
+                    fontSize: scaleFont(13, design.fontScale),
+                  }}
+                  numberOfLines={2}
+                >
+                  Recibo adjunto: {lastReceipt.vendor ?? "Sin nombre"}
+                  {lastReceipt.total !== null
+                    ? ` — Total: $${lastReceipt.total.toLocaleString("es-CO")}`
+                    : ""}
+                </Text>
+                <Text
+                  className="text-candy-text-secondary mt-1"
+                  style={{ fontSize: scaleFont(12, design.fontScale) }}
+                >
+                  Escribe un mensaje o toca enviar para que Dumy lo analice.
+                </Text>
+              </View>
+            </FadeInView>
           )}
 
           {/* Chat Messages */}
-          {messages.map((msg) => {
+          {messages.map((msg, idx) => {
             const isUser = msg.role === "user";
             return (
-              <View
+              <FadeInView
                 key={msg.id}
-                className={`mb-3 max-w-[85%] ${isUser ? "self-end" : "self-start"}`}
+                delay={idx > messages.length - 3 ? 50 : 0}
+                slideFrom={isUser ? 0 : 10}
+                duration={300}
               >
                 <View
-                  className="px-4 py-3"
-                  style={{
-                    borderRadius: getCornerRadius(design.radius, "card"),
-                    borderBottomRightRadius: isUser
-                      ? 6
-                      : getCornerRadius(design.radius, "card"),
-                    borderBottomLeftRadius: isUser
-                      ? getCornerRadius(design.radius, "card")
-                      : 6,
-                    backgroundColor: isUser
-                      ? design.palette.primary
-                      : "#ffffff",
-                    borderWidth: isUser ? 0 : 1,
-                    borderColor: isUser
-                      ? "transparent"
-                      : design.palette.borderLight,
-                  }}
+                  className={`mb-3 max-w-[85%] ${isUser ? "self-end" : "self-start"}`}
                 >
+                  {isUser ? (
+                    <LinearGradient
+                      colors={design.gradients.hero.colors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      className="px-4 py-3"
+                      style={{
+                        borderRadius: getCornerRadius(design.radius, "card"),
+                        borderBottomRightRadius: 6,
+                        ...applyShadow(design.shadows.button),
+                      }}
+                    >
+                      <Text
+                        className="text-white"
+                        style={{ fontSize: scaleFont(13, design.fontScale) }}
+                        selectable
+                      >
+                        {msg.content}
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <View
+                      className="px-4 py-3"
+                      style={{
+                        borderRadius: getCornerRadius(design.radius, "card"),
+                        borderBottomLeftRadius: 6,
+                        backgroundColor: toRgba(
+                          design.palette.surfaceLight,
+                          0.94,
+                        ),
+                        borderWidth: 1,
+                        borderColor: design.palette.borderLight,
+                        ...applyShadow(design.shadows.card),
+                      }}
+                    >
+                      <Text
+                        className="text-candy-text"
+                        style={{ fontSize: scaleFont(13, design.fontScale) }}
+                        selectable
+                      >
+                        {msg.content}
+                      </Text>
+                    </View>
+                  )}
                   <Text
-                    className={isUser ? "text-white" : "text-candy-text"}
-                    style={{ fontSize: scaleFont(13, design.fontScale) }}
+                    className={`text-xs text-candy-text-secondary mt-1 ${isUser ? "text-right" : "text-left"}`}
                   >
-                    {msg.content}
+                    {getRelativeTimeLabel(msg.createdAt)}
                   </Text>
                 </View>
-                <Text
-                  className={`text-xs text-candy-text-secondary mt-1 ${isUser ? "text-right" : "text-left"}`}
-                >
-                  {getRelativeTimeLabel(msg.createdAt)}
-                </Text>
-              </View>
+              </FadeInView>
             );
           })}
 
           {/* Typing Indicator */}
           {isResponding && (
-            <View className="self-start mb-3 max-w-[85%]">
-              <View className="bg-candy-white border border-candy-outline-light rounded-candy rounded-bl-sm px-4 py-3 flex-row items-center gap-2">
-                <ActivityIndicator size="small" color="#e040a0" />
-                <Text
-                  className="text-candy-text-secondary"
-                  style={{ fontSize: scaleFont(13, design.fontScale) }}
+            <FadeInView slideFrom={8} duration={250}>
+              <View className="self-start mb-3 max-w-[85%]">
+                <View
+                  className="rounded-bl-sm px-4 py-3 flex-row items-center gap-2"
+                  style={{
+                    borderRadius: getCornerRadius(design.radius, "card"),
+                    backgroundColor: toRgba(design.palette.surfaceLight, 0.94),
+                    borderWidth: 1,
+                    borderColor: design.palette.borderLight,
+                  }}
                 >
-                  Dumy esta pensando...
-                </Text>
+                  <ActivityIndicator
+                    size="small"
+                    color={design.palette.primary}
+                  />
+                  <Text
+                    className="text-candy-text-secondary"
+                    style={{ fontSize: scaleFont(13, design.fontScale) }}
+                  >
+                    Dumy esta pensando...
+                  </Text>
+                </View>
               </View>
-            </View>
+            </FadeInView>
           )}
 
           {/* Error */}
           {error && (
-            <View className="bg-candy-error-bg rounded-candy px-4 py-3 mb-3">
-              <Text className="text-candy-error text-sm">{error}</Text>
-            </View>
+            <FadeInView>
+              <View
+                className="px-4 py-3 mb-3"
+                style={{
+                  borderRadius: getCornerRadius(design.radius, "card"),
+                  backgroundColor: toRgba("#e53e3e", 0.1),
+                  borderWidth: 1,
+                  borderColor: toRgba("#e53e3e", 0.35),
+                }}
+              >
+                <Text className="text-candy-error text-sm">{error}</Text>
+              </View>
+            </FadeInView>
           )}
 
           <View className="h-4" />
         </ScrollView>
+
+        {/* Attached image preview */}
+        {attachedImage && (
+          <FadeInView duration={200} slideFrom={10}>
+            <View
+              className="px-4 pt-2 flex-row items-center gap-2"
+              style={{ backgroundColor: design.palette.backgroundLight }}
+            >
+              <Image
+                source={{ uri: attachedImage }}
+                className="w-14 h-14"
+                style={{
+                  borderRadius: getCornerRadius(design.radius, "card"),
+                }}
+                resizeMode="cover"
+              />
+              <View className="flex-1">
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(12, design.fontScale) }}
+                >
+                  Imagen adjunta — se procesara con OCR
+                </Text>
+              </View>
+              <ScalePress onPress={handleRemoveImage}>
+                <FontAwesome
+                  name="times-circle"
+                  size={20}
+                  color={design.palette.borderDark}
+                />
+              </ScalePress>
+            </View>
+          </FadeInView>
+        )}
 
         {/* Input Bar */}
         <View
@@ -216,8 +394,25 @@ export default function ChatScreen() {
           }}
         >
           <View className="flex-row items-center gap-2">
+            {/* Attach image button */}
+            <ScalePress
+              onPress={handleAttachImage}
+              disabled={isResponding}
+              className="w-11 h-11 items-center justify-center"
+              style={{
+                borderRadius: getCornerRadius(design.radius, "pill"),
+                backgroundColor: design.palette.surfaceLight,
+              }}
+            >
+              <FontAwesome
+                name="camera"
+                size={16}
+                color={isResponding ? "#ccc" : design.palette.secondary}
+              />
+            </ScalePress>
+
             <View
-              className="flex-1 flex-row items-center bg-candy-white border px-4"
+              className="flex-1 flex-row items-center bg-white border px-4"
               style={{
                 borderColor: design.palette.borderLight,
                 borderRadius: getCornerRadius(design.radius, "pill"),
@@ -227,7 +422,7 @@ export default function ChatScreen() {
                 className="flex-1 py-3 text-candy-text"
                 style={{ fontSize: scaleFont(13, design.fontScale) }}
                 placeholder="Escribe un mensaje..."
-                placeholderTextColor="#907898"
+                placeholderTextColor={design.palette.borderDark}
                 value={input}
                 onChangeText={setInput}
                 onSubmitEditing={handleSend}
@@ -235,24 +430,37 @@ export default function ChatScreen() {
                 editable={!isResponding}
               />
             </View>
-            <TouchableOpacity
+            <ScalePress
               onPress={handleSend}
-              disabled={isResponding || !input.trim()}
+              disabled={
+                isResponding ||
+                (!input.trim() && !attachedImage && !lastReceipt)
+              }
               className="w-11 h-11 items-center justify-center"
               style={{
                 borderRadius: getCornerRadius(design.radius, "pill"),
                 backgroundColor:
-                  input.trim() && !isResponding
+                  (input.trim() || attachedImage || lastReceipt) &&
+                  !isResponding
                     ? design.palette.primary
                     : design.palette.surfaceLight,
+                ...((input.trim() || attachedImage || lastReceipt) &&
+                !isResponding
+                  ? applyShadow(design.shadows.button)
+                  : {}),
               }}
             >
               <FontAwesome
                 name="send"
                 size={16}
-                color={input.trim() && !isResponding ? "#fff" : "#907898"}
+                color={
+                  (input.trim() || attachedImage || lastReceipt) &&
+                  !isResponding
+                    ? "#fff"
+                    : design.palette.borderDark
+                }
               />
-            </TouchableOpacity>
+            </ScalePress>
           </View>
         </View>
       </KeyboardAvoidingView>

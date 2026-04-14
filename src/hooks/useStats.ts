@@ -1,61 +1,29 @@
 /**
  * Custom hooks for statistics and financial insights
- * Wraps statsStore and triggers computations automatically
+ * Backward-compatible facade over the centralized financial system.
  */
 
-import { useEffect } from "react";
-import { useCategoryStore } from "../store/categoryStore";
-import { useStatsStore } from "../store/statsStore";
-import { useTransactionStore } from "../store/transactionStore";
 import {
     BudgetStatus,
     CategoryBreakdown,
     PeriodStats,
     TrendData,
 } from "../store/types";
-import { getMonthRange } from "../utils/dates";
+import { useFinancialSystem } from "./useFinancialSystem";
 
 /**
  * Get all monthly statistics with automatic computation
  * Triggers recomputation when month changes
  */
 export function useMonthlyStats(year: number, month: number) {
-  const computeStatsForPeriod = useStatsStore((s) => s.computeStatsForPeriod);
-  const computeTrends = useStatsStore((s) => s.computeTrends);
-  const computeBudgetStatus = useStatsStore((s) => s.computeBudgetStatus);
-
-  const transactionCount = useTransactionStore((s) => s.transactions.length);
-  const budgetCount = useCategoryStore((s) => s.budgets.length);
-  const categoryCount = useCategoryStore((s) => s.categories.length);
-
-  const currentPeriodStats = useStatsStore((s) => s.currentPeriodStats);
-  const categoryBreakdown = useStatsStore((s) => s.categoryBreakdown);
-  const trends = useStatsStore((s) => s.trends);
-  const budgetStatus = useStatsStore((s) => s.budgetStatus);
-  const isComputing = useStatsStore((s) => s.isComputing);
-
-  useEffect(() => {
-    const { from, to } = getMonthRange(year, month);
-    computeStatsForPeriod(from, to);
-    computeTrends();
-    computeBudgetStatus();
-  }, [
-    year,
-    month,
-    transactionCount,
-    budgetCount,
-    categoryCount,
-    computeStatsForPeriod,
-    computeTrends,
-    computeBudgetStatus,
-  ]);
+  const financial = useFinancialSystem({ year, month });
 
   return {
-    periodStats: currentPeriodStats,
-    categoryBreakdown,
-    trends,
-    budgetStatus,
-    isComputing,
+    periodStats: financial.stats,
+    categoryBreakdown: financial.categoryBreakdown,
+    trends: financial.trends,
+    budgetStatus: financial.budgetStatus,
+    isComputing: financial.isLoading,
   };
 }
 
@@ -63,28 +31,28 @@ export function useMonthlyStats(year: number, month: number) {
  * Get period statistics only
  */
 export function usePeriodStats(): PeriodStats | null {
-  return useStatsStore((s) => s.currentPeriodStats);
+  return useFinancialSystem().stats;
 }
 
 /**
  * Get category breakdown for current period
  */
 export function useCategoryBreakdown(): CategoryBreakdown[] {
-  return useStatsStore((s) => s.categoryBreakdown);
+  return useFinancialSystem().categoryBreakdown;
 }
 
 /**
  * Get trend data (week-over-week, month-over-month)
  */
 export function useTrends(): TrendData | null {
-  return useStatsStore((s) => s.trends);
+  return useFinancialSystem().trends;
 }
 
 /**
  * Get budget status for all budgets
  */
 export function useBudgetStatus(): BudgetStatus[] {
-  return useStatsStore((s) => s.budgetStatus);
+  return useFinancialSystem().budgetStatus;
 }
 
 /**
@@ -93,7 +61,7 @@ export function useBudgetStatus(): BudgetStatus[] {
 export function useCategoryBudgetStatus(
   categoryId: string,
 ): BudgetStatus | undefined {
-  const budgetStatus = useStatsStore((s) => s.budgetStatus);
+  const budgetStatus = useFinancialSystem().budgetStatus;
   return budgetStatus.find((b) => b.categoryId === categoryId);
 }
 
@@ -101,15 +69,14 @@ export function useCategoryBudgetStatus(
  * Check if any budget is exceeded
  */
 export function useHasOverBudget(): boolean {
-  const budgetStatus = useStatsStore((s) => s.budgetStatus);
-  return budgetStatus.some((b) => b.isOverBudget);
+  return useFinancialSystem().overBudgetAlerts.length > 0;
 }
 
 /**
  * Get percentage used for a specific category budget
  */
 export function useBudgetPercentageUsed(categoryId: string): number {
-  const budgetStatus = useStatsStore((s) => s.budgetStatus);
+  const budgetStatus = useFinancialSystem().budgetStatus;
   const status = budgetStatus.find((b) => b.categoryId === categoryId);
   return status?.percentageUsed || 0;
 }
@@ -118,7 +85,7 @@ export function useBudgetPercentageUsed(categoryId: string): number {
  * Get savings rate for current month
  */
 export function useSavingsRate(): number {
-  const periodStats = useStatsStore((s) => s.currentPeriodStats);
+  const periodStats = useFinancialSystem().stats;
   if (!periodStats || periodStats.totalIncome === 0) return 0;
 
   const savings = periodStats.totalIncome - periodStats.totalExpense;
@@ -129,7 +96,7 @@ export function useSavingsRate(): number {
  * Get total spending for current period
  */
 export function useTotalSpending(): number {
-  const periodStats = useStatsStore((s) => s.currentPeriodStats);
+  const periodStats = useFinancialSystem().stats;
   return periodStats?.totalExpense || 0;
 }
 
@@ -137,7 +104,7 @@ export function useTotalSpending(): number {
  * Get total income for current period
  */
 export function useTotalIncome(): number {
-  const periodStats = useStatsStore((s) => s.currentPeriodStats);
+  const periodStats = useFinancialSystem().stats;
   return periodStats?.totalIncome || 0;
 }
 
@@ -145,7 +112,7 @@ export function useTotalIncome(): number {
  * Get net balance for current period
  */
 export function useNetBalance(): number {
-  const periodStats = useStatsStore((s) => s.currentPeriodStats);
+  const periodStats = useFinancialSystem().stats;
   return periodStats?.balance || 0;
 }
 
@@ -153,5 +120,5 @@ export function useNetBalance(): number {
  * Get stats loading state
  */
 export function useStatsLoading(): boolean {
-  return useStatsStore((s) => s.isComputing);
+  return useFinancialSystem().isLoading;
 }

@@ -1,28 +1,24 @@
 /**
- * Custom hooks for transaction management
- * Wraps transactionStore for component consumption
+ * Custom hooks for transaction management.
+ * Backward-compatible facade over the centralized financial system.
  */
 
-import { useTransactionStore } from '../store/transactionStore';
-import { Transaction, CreateTransactionInput, UpdateTransactionInput } from '../store/types';
-import { useEffect } from 'react';
+import { useMemo } from "react";
+import { Transaction } from "../store/types";
+import { useFinancialSystem } from "./useFinancialSystem";
 
 /**
  * Get all transactions with CRUD operations
  */
 export function useTransactions() {
-  const transactions = useTransactionStore((s) => s.transactions);
-  const isLoading = useTransactionStore((s) => s.isLoading);
-  const addTransaction = useTransactionStore((s) => s.addTransaction);
-  const updateTransaction = useTransactionStore((s) => s.updateTransaction);
-  const deleteTransaction = useTransactionStore((s) => s.deleteTransaction);
+  const financial = useFinancialSystem();
 
   return {
-    transactions,
-    isLoading,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
+    transactions: financial.transactions,
+    isLoading: financial.isLoading,
+    addTransaction: financial.addTransaction,
+    updateTransaction: financial.updateTransaction,
+    deleteTransaction: financial.deleteTransaction,
   };
 }
 
@@ -34,33 +30,26 @@ export function useTransactionsByMonth(
   year: number,
   month: number,
 ): Transaction[] {
-  const transactions = useTransactionStore((s) => s.transactions);
-
-  return transactions.filter((t) => {
-    const date = new Date(t.date + 'T00:00:00Z');
-    return (
-      date.getFullYear() === year &&
-      date.getMonth() + 1 === month
-    );
-  });
+  const financial = useFinancialSystem({ year, month });
+  return financial.transactions.filter(
+    (t) => t.date >= financial.range.from && t.date <= financial.range.to,
+  );
 }
 
 /**
  * Get transactions for a specific category
  */
-export function useTransactionsByCategory(
-  categoryId: string,
-): Transaction[] {
-  const transactions = useTransactionStore((s) => s.transactions);
-  return transactions.filter((t) => t.categoryId === categoryId);
+export function useTransactionsByCategory(categoryId: string): Transaction[] {
+  const financial = useFinancialSystem();
+  return financial.transactions.filter((t) => t.categoryId === categoryId);
 }
 
 /**
  * Get N most recent transactions
  */
 export function useRecentTransactions(limit: number = 10): Transaction[] {
-  const transactions = useTransactionStore((s) => s.transactions);
-  return transactions.slice(0, limit);
+  const financial = useFinancialSystem();
+  return financial.recentTransactions.slice(0, limit);
 }
 
 /**
@@ -70,9 +59,10 @@ export function useTransactionsByDateRange(
   from: string,
   to: string,
 ): Transaction[] {
-  const transactions = useTransactionStore((s) => s.transactions);
-  return transactions.filter(
-    (t) => t.date >= from && t.date <= to,
+  const financial = useFinancialSystem();
+  return useMemo(
+    () => financial.transactions.filter((t) => t.date >= from && t.date <= to),
+    [financial.transactions, from, to],
   );
 }
 
@@ -80,10 +70,10 @@ export function useTransactionsByDateRange(
  * Get transactions of a specific type (income/expense)
  */
 export function useTransactionsByType(
-  type: 'income' | 'expense',
+  type: "income" | "expense",
 ): Transaction[] {
-  const transactions = useTransactionStore((s) => s.transactions);
-  return transactions.filter((t) => t.type === type);
+  const financial = useFinancialSystem();
+  return financial.transactions.filter((t) => t.type === type);
 }
 
 /**
@@ -102,7 +92,7 @@ export function useTransactionCountForMonth(
 export function useMonthlyTotal(
   year: number,
   month: number,
-  type: 'income' | 'expense',
+  type: "income" | "expense",
 ): number {
   return useTransactionsByMonth(year, month)
     .filter((t) => t.type === type)

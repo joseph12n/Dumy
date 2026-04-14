@@ -1,27 +1,26 @@
 /**
  * Custom hooks for category and budget management
- * Wraps categoryStore for component consumption
+ * Backward-compatible facade over the centralized financial system.
  */
 
-import { useCategoryStore } from '../store/categoryStore';
-import { Budget, Category, CreateBudgetInput, CreateCategoryInput } from '../store/types';
+import {
+    Budget,
+    Category
+} from "../store/types";
+import { useFinancialSystem } from "./useFinancialSystem";
 
 /**
  * Get all categories with CRUD operations
  */
 export function useCategories() {
-  const categories = useCategoryStore((s) => s.categories);
-  const isLoading = useCategoryStore((s) => s.isLoading);
-  const addCategory = useCategoryStore((s) => s.addCategory);
-  const updateCategory = useCategoryStore((s) => s.updateCategory);
-  const deleteCategory = useCategoryStore((s) => s.deleteCategory);
+  const financial = useFinancialSystem();
 
   return {
-    categories,
-    isLoading,
-    addCategory,
-    updateCategory,
-    deleteCategory,
+    categories: financial.categories,
+    isLoading: financial.isLoading,
+    addCategory: financial.addCategory,
+    updateCategory: financial.updateCategory,
+    deleteCategory: financial.deleteCategory,
   };
 }
 
@@ -29,47 +28,45 @@ export function useCategories() {
  * Get a single category by ID
  */
 export function useCategoryById(id: string): Category | undefined {
-  return useCategoryStore((s) => s.getCategoryById(id));
+  const financial = useFinancialSystem();
+  return financial.findCategoryById(id);
 }
 
 /**
  * Get default categories only
  */
 export function useDefaultCategories(): Category[] {
-  const categories = useCategoryStore((s) => s.categories);
-  return categories.filter((c) => c.isDefault === 1);
+  const financial = useFinancialSystem();
+  return financial.categories.filter((c) => c.isDefault === 1);
 }
 
 /**
  * Get custom (user-created) categories
  */
 export function useCustomCategories(): Category[] {
-  const categories = useCategoryStore((s) => s.categories);
-  return categories.filter((c) => c.isDefault === 0);
+  const financial = useFinancialSystem();
+  return financial.categories.filter((c) => c.isDefault === 0);
 }
 
 /**
  * Get categories sorted by name
  */
 export function useCategoriesSorted(): Category[] {
-  const categories = useCategoryStore((s) => s.categories);
-  return [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  const financial = useFinancialSystem();
+  return [...financial.categories].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
  * Get all budgets with CRUD operations
  */
 export function useBudgets() {
-  const budgets = useCategoryStore((s) => s.budgets);
-  const addBudget = useCategoryStore((s) => s.addBudget);
-  const updateBudget = useCategoryStore((s) => s.updateBudget);
-  const deleteBudget = useCategoryStore((s) => s.deleteBudget);
+  const financial = useFinancialSystem();
 
   return {
-    budgets,
-    addBudget,
-    updateBudget,
-    deleteBudget,
+    budgets: financial.budgets,
+    addBudget: financial.addBudget,
+    updateBudget: financial.updateBudget,
+    deleteBudget: financial.deleteBudget,
   };
 }
 
@@ -77,29 +74,30 @@ export function useBudgets() {
  * Get budget for a specific category
  */
 export function useCategoryBudget(categoryId: string): Budget | undefined {
-  return useCategoryStore((s) =>
-    s.getBudgetForCategory(categoryId),
-  );
+  const { budgets } = useBudgets();
+  return budgets.find((b) => b.categoryId === categoryId);
 }
 
 /**
  * Get all budgets for multiple categories
  */
 export function useBudgetsForCategories(categoryIds: string[]): Budget[] {
-  const budgets = useCategoryStore((s) => s.budgets);
+  const { budgets } = useBudgets();
   return budgets.filter((b) => categoryIds.includes(b.categoryId));
 }
 
 /**
  * Get categories with budgets
  */
-export function useCategoriesWithBudgets(): Array<Category & { budget: Budget | null }> {
-  const categories = useCategoryStore((s) => s.categories);
-  const categoryStore = useCategoryStore((s) => s);
+export function useCategoriesWithBudgets(): Array<
+  Category & { budget: Budget | null }
+> {
+  const financial = useFinancialSystem();
+  const { budgets } = useBudgets();
 
-  return categories.map((c) => ({
+  return financial.categories.map((c) => ({
     ...c,
-    budget: categoryStore.getBudgetForCategory(c.id) || null,
+    budget: budgets.find((b) => b.categoryId === c.id) || null,
   }));
 }
 
@@ -107,11 +105,11 @@ export function useCategoriesWithBudgets(): Array<Category & { budget: Budget | 
  * Get categories without budgets
  */
 export function useCategoriesWithoutBudgets(): Category[] {
-  const categories = useCategoryStore((s) => s.categories);
-  const budgets = useCategoryStore((s) => s.budgets);
+  const financial = useFinancialSystem();
+  const { budgets } = useBudgets();
   const budgetedCategoryIds = new Set(budgets.map((b) => b.categoryId));
 
-  return categories.filter((c) => !budgetedCategoryIds.has(c.id));
+  return financial.categories.filter((c) => !budgetedCategoryIds.has(c.id));
 }
 
 /**
@@ -134,21 +132,22 @@ export function useCategoryBudgetLimit(categoryId: string): number | null {
  * Get category count
  */
 export function useCategoryCount(): number {
-  const categories = useCategoryStore((s) => s.categories);
-  return categories.length;
+  const financial = useFinancialSystem();
+  return financial.categories.length;
 }
 
 /**
  * Get budget count
  */
 export function useBudgetCount(): number {
-  const budgets = useCategoryStore((s) => s.budgets);
-  return budgets.length;
+  const financial = useFinancialSystem();
+  return financial.budgetsCount;
 }
 
 /**
  * Get category loading state
  */
 export function useCategoriesLoading(): boolean {
-  return useCategoryStore((s) => s.isLoading);
+  const financial = useFinancialSystem();
+  return financial.isLoading;
 }

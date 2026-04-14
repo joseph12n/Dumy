@@ -132,6 +132,39 @@ export interface DailySummary {
   balance: number; // COP pesos
 }
 
+// ========== OCR / RECEIPT SCANNING ==========
+export interface OCRTextBlock {
+  text: string;
+  confidence: number;
+  boundingBox?: { x: number; y: number; width: number; height: number };
+}
+
+export interface OCRResult {
+  success: boolean;
+  text: string;
+  blocks: OCRTextBlock[];
+  error?: string;
+}
+
+export interface ReceiptLineItem {
+  description: string;
+  amount: number; // COP pesos
+}
+
+export interface ReceiptData {
+  items: ReceiptLineItem[];
+  subtotal: number | null;
+  tax: number | null;
+  total: number | null;
+  calculatedSum: number;
+  date: string | null;
+  vendor: string | null;
+  rawText: string;
+  confidence: number; // 0-1
+}
+
+export type ScanStatus = 'idle' | 'capturing' | 'processing' | 'parsed' | 'error';
+
 // ========== FINANCIAL CONTEXT FOR AI ==========
 export interface FinancialContext {
   currentMonthSummary: {
@@ -157,4 +190,6 @@ export interface FinancialContext {
     isOverBudget: boolean;
   }>;
   userName?: string;
+  /** Optional OCR-extracted receipt data attached to the current context */
+  attachedReceipt?: ReceiptData;
 }

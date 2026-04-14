@@ -1,74 +1,48 @@
 /**
- * LLM Bridge compatibility layer.
- * Keeps the previous chat store interface while delegating to the AI router.
+ * LLM Bridge — Offline-only compatibility layer.
+ * Delegates to the local AI router (skill engine).
  */
 
-import { aiRouter } from "./ai";
+import { FinancialContext, ReceiptData } from "../store/types";
+import { setLocalProviderContext } from "./ai/providers/localProvider";
+import * as aiRouter from "./ai/router";
 import { AIGenerationOptions } from "./ai/types";
-
-export interface LLMOptions extends AIGenerationOptions {}
 
 export interface LLMBridge {
   isAvailable(): boolean;
-  generateResponse(prompt: string, options?: LLMOptions): Promise<string>;
+  generateResponse(prompt: string, options?: AIGenerationOptions): Promise<string>;
   generateResponseStream(
     prompt: string,
     onToken: (token: string) => void,
-    options?: LLMOptions,
+    options?: AIGenerationOptions,
   ): Promise<void>;
+  setContext(context: FinancialContext, receipt?: ReceiptData): void;
 }
 
-class RoutedLLMBridge implements LLMBridge {
+class LocalLLMBridge implements LLMBridge {
   isAvailable(): boolean {
     return aiRouter.isAvailable();
   }
 
+  setContext(context: FinancialContext, receipt?: ReceiptData): void {
+    setLocalProviderContext(context, receipt);
+  }
+
   async generateResponse(
     prompt: string,
-    options?: LLMOptions,
+    options?: AIGenerationOptions,
   ): Promise<string> {
-    const response = await aiRouter.generateResponse(
-      prompt,
-      normalizeOptions(options),
-    );
+    const response = await aiRouter.generateResponse(prompt, options);
     return response.text;
   }
 
   async generateResponseStream(
     prompt: string,
     onToken: (token: string) => void,
-    options?: LLMOptions,
+    options?: AIGenerationOptions,
   ): Promise<void> {
-    await aiRouter.generateResponseStream(
-      prompt,
-      onToken,
-      normalizeOptions(options),
-    );
+    await aiRouter.generateResponseStream(prompt, onToken, options);
   }
 }
 
-function normalizeOptions(
-  options?: LLMOptions,
-): AIGenerationOptions | undefined {
-  if (!options) {
-    return undefined;
-  }
-
-  return {
-    maxTokens: options.maxTokens,
-    temperature: options.temperature,
-    stopSequences: options.stopSequences,
-    requestContext: options.requestContext,
-  };
-}
-
-/**
- * Factory function to create the appropriate LLM bridge
- * Uses the hybrid AI router while preserving the legacy interface
- */
-function createLLMBridge(): LLMBridge {
-  return new RoutedLLMBridge();
-}
-
-// Singleton instance
-export const llmBridge: LLMBridge = createLLMBridge();
+export const llmBridge: LLMBridge = new LocalLLMBridge();
