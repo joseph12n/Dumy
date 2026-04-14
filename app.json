@@ -2,7 +2,7 @@
   "expo": {
     "name": "dumy",
     "slug": "dumy-finance",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dumy",
@@ -14,9 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "buildNumber": "2",
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 2,
       "package": "com.joseph12n.dumy",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
