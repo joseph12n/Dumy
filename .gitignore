@@ -44,8 +44,8 @@ backend/.env.*
 /android
 
 # AI skills
-.agents/skills/
-.augment/skills/
+.agents/
+.augment/
 
 # AI contextualization documents
 CONTEXT.md
