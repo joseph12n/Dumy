@@ -1,9 +1,10 @@
+import { FadeInView, ScalePress } from "@/src/components/animated";
 import { BrandHeader, CandyButton } from "@/src/components/common";
-import { useCategories } from "@/src/hooks/useCategories";
-import { useTransactions } from "@/src/hooks/useTransactions";
+import { useFinancialSystem } from "@/src/hooks/useFinancialSystem";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import { CreateTransactionInput, TransactionType } from "@/src/store/types";
 import {
+    applyShadow,
     getCornerRadius,
     resolveRuntimeDesign,
     scaleFont,
@@ -20,7 +21,7 @@ import {
     ScrollView,
     Text,
     TextInput,
-    TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,9 +39,12 @@ function isValidISODate(value: string): boolean {
 }
 
 export default function AddTransactionScreen() {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 390;
   const router = useRouter();
-  const { addTransaction } = useTransactions();
-  const { categories } = useCategories();
+  const financial = useFinancialSystem();
+  const addTransaction = financial.addTransaction;
+  const categories = financial.categories;
   const settings = useSettingsStore((s) => s.settings);
   const design = resolveRuntimeDesign(settings);
 
@@ -106,7 +110,7 @@ export default function AddTransactionScreen() {
           <BrandHeader title="Dumy" subtitle="Registro de transacciones" />
 
           {/* Title */}
-          <View className="px-5 mt-4">
+          <FadeInView delay={100} className="px-5 mt-4">
             <Text
               className="text-candy-text font-bold"
               style={{ fontSize: scaleFont(24, design.fontScale) }}
@@ -119,72 +123,79 @@ export default function AddTransactionScreen() {
             >
               Registra tu gasto o ingreso siguiendo la linea grafica Dumy.
             </Text>
-          </View>
+          </FadeInView>
 
           {/* Upload / Manual buttons */}
-          <View className="flex-row gap-3 mx-5 mt-5">
-            <TouchableOpacity
-              onPress={() => router.push("/scan")}
-              className="flex-1 items-center py-5 gap-2"
-              style={{
-                borderRadius: getCornerRadius(design.radius, "card"),
-                backgroundColor: design.palette.surfaceLight,
-              }}
-            >
-              <FontAwesome
-                name="camera"
-                size={28}
-                color={design.palette.secondary}
-              />
-              <Text
-                className="font-semibold"
+          <FadeInView delay={150}>
+            <View className={`mx-5 mt-5 gap-3 ${isNarrow ? "" : "flex-row"}`}>
+              <ScalePress
+                onPress={() => router.push("/scan")}
+                className={`items-center py-5 gap-2 ${isNarrow ? "" : "flex-1"}`}
                 style={{
-                  color: design.palette.secondary,
-                  fontSize: scaleFont(13, design.fontScale),
+                  width: isNarrow ? "100%" : undefined,
+                  borderRadius: getCornerRadius(design.radius, "card"),
+                  backgroundColor: design.palette.surfaceLight,
+                  ...applyShadow(design.shadows.card),
                 }}
               >
-                Subir Recibo
-              </Text>
-              <Text
-                className="text-candy-text-secondary"
-                style={{ fontSize: scaleFont(11, design.fontScale) }}
-              >
-                Escaneo visual guiado
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 items-center py-5 gap-2 border-2"
-              style={{
-                borderRadius: getCornerRadius(design.radius, "card"),
-                borderColor: design.palette.primary,
-                backgroundColor: `${design.palette.primary}20`,
-              }}
-            >
-              <FontAwesome
-                name="pencil-square-o"
-                size={28}
-                color={design.palette.primary}
-              />
-              <Text
-                className="font-semibold"
+                <FontAwesome
+                  name="camera"
+                  size={28}
+                  color={design.palette.secondary}
+                />
+                <Text
+                  className="font-semibold"
+                  style={{
+                    color: design.palette.secondary,
+                    fontSize: scaleFont(13, design.fontScale),
+                  }}
+                >
+                  Subir Recibo
+                </Text>
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                >
+                  Escaneo visual guiado
+                </Text>
+              </ScalePress>
+              <ScalePress
+                className={`items-center py-5 gap-2 border-2 ${isNarrow ? "" : "flex-1"}`}
                 style={{
-                  color: design.palette.primary,
-                  fontSize: scaleFont(13, design.fontScale),
+                  width: isNarrow ? "100%" : undefined,
+                  borderRadius: getCornerRadius(design.radius, "card"),
+                  borderColor: design.palette.primary,
+                  backgroundColor: `${design.palette.primary}15`,
+                  ...applyShadow(design.shadows.card),
                 }}
               >
-                Manual
-              </Text>
-              <Text
-                className="text-candy-text-secondary"
-                style={{ fontSize: scaleFont(11, design.fontScale) }}
-              >
-                Llena los detalles
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <FontAwesome
+                  name="pencil-square-o"
+                  size={28}
+                  color={design.palette.primary}
+                />
+                <Text
+                  className="font-semibold"
+                  style={{
+                    color: design.palette.primary,
+                    fontSize: scaleFont(13, design.fontScale),
+                  }}
+                >
+                  Manual
+                </Text>
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                  numberOfLines={2}
+                >
+                  Llena los detalles
+                </Text>
+              </ScalePress>
+            </View>
+          </FadeInView>
 
           {/* Transaction Type */}
-          <View className="mx-5 mt-6">
+          <FadeInView delay={200} className="mx-5 mt-6">
             <Text
               className="text-candy-text font-semibold mb-2"
               style={{ fontSize: scaleFont(13, design.fontScale) }}
@@ -203,12 +214,13 @@ export default function AddTransactionScreen() {
                   key: "income" as const,
                   label: "Ingreso",
                   icon: "arrow-down" as const,
-                  color: "#0096cc",
+                  color: design.palette.secondary,
                 },
               ].map((t) => (
-                <TouchableOpacity
+                <ScalePress
                   key={t.key}
                   onPress={() => setType(t.key)}
+                  scaleValue={0.96}
                   className="flex-1 flex-row items-center justify-center gap-2"
                   style={{
                     borderRadius: getCornerRadius(design.radius, "pill"),
@@ -217,6 +229,9 @@ export default function AddTransactionScreen() {
                       type === t.key
                         ? design.palette.primary
                         : design.palette.surfaceLight,
+                    ...(type === t.key
+                      ? applyShadow(design.shadows.button)
+                      : {}),
                   }}
                 >
                   <FontAwesome
@@ -233,13 +248,13 @@ export default function AddTransactionScreen() {
                   >
                     {t.label}
                   </Text>
-                </TouchableOpacity>
+                </ScalePress>
               ))}
             </View>
-          </View>
+          </FadeInView>
 
           {/* Amount */}
-          <View className="mx-5 mt-5">
+          <FadeInView delay={250} className="mx-5 mt-5">
             <Text
               className="text-candy-text font-semibold mb-2"
               style={{ fontSize: scaleFont(13, design.fontScale) }}
@@ -247,10 +262,11 @@ export default function AddTransactionScreen() {
               Monto (COP)
             </Text>
             <View
-              className="flex-row items-center bg-candy-white border px-4"
+              className="flex-row items-center bg-white border px-4"
               style={{
                 borderColor: design.palette.borderLight,
                 borderRadius: getCornerRadius(design.radius, "card"),
+                ...applyShadow(design.shadows.card),
               }}
             >
               <Text className="text-candy-text text-lg font-bold mr-2">$</Text>
@@ -258,16 +274,16 @@ export default function AddTransactionScreen() {
                 className="flex-1 py-3 text-candy-text"
                 style={{ fontSize: scaleFont(18, design.fontScale) }}
                 placeholder="0"
-                placeholderTextColor="#907898"
+                placeholderTextColor={design.palette.borderDark}
                 keyboardType="numeric"
                 value={amount}
                 onChangeText={setAmount}
               />
             </View>
-          </View>
+          </FadeInView>
 
           {/* Description */}
-          <View className="mx-5 mt-4">
+          <FadeInView delay={300} className="mx-5 mt-4">
             <Text
               className="text-candy-text font-semibold mb-2"
               style={{ fontSize: scaleFont(13, design.fontScale) }}
@@ -275,21 +291,22 @@ export default function AddTransactionScreen() {
               Descripcion
             </Text>
             <TextInput
-              className="bg-candy-white border px-4 py-3 text-candy-text"
+              className="bg-white border px-4 py-3 text-candy-text"
               style={{
                 borderColor: design.palette.borderLight,
                 borderRadius: getCornerRadius(design.radius, "card"),
                 fontSize: scaleFont(15, design.fontScale),
+                ...applyShadow(design.shadows.card),
               }}
               placeholder="Ej: Almuerzo en restaurante"
-              placeholderTextColor="#907898"
+              placeholderTextColor={design.palette.borderDark}
               value={description}
               onChangeText={setDescription}
             />
-          </View>
+          </FadeInView>
 
           {/* Date */}
-          <View className="mx-5 mt-4">
+          <FadeInView delay={350} className="mx-5 mt-4">
             <Text
               className="text-candy-text font-semibold mb-2"
               style={{ fontSize: scaleFont(13, design.fontScale) }}
@@ -297,10 +314,11 @@ export default function AddTransactionScreen() {
               Fecha
             </Text>
             <View
-              className="flex-row items-center bg-candy-white border px-4 py-3"
+              className="flex-row items-center bg-white border px-4 py-3"
               style={{
                 borderColor: design.palette.borderLight,
                 borderRadius: getCornerRadius(design.radius, "card"),
+                ...applyShadow(design.shadows.card),
               }}
             >
               <FontAwesome name="calendar" size={16} color="#604868" />
@@ -308,15 +326,15 @@ export default function AddTransactionScreen() {
                 className="flex-1 ml-3 text-candy-text"
                 style={{ fontSize: scaleFont(15, design.fontScale) }}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor="#907898"
+                placeholderTextColor={design.palette.borderDark}
                 value={date}
                 onChangeText={setDate}
               />
             </View>
-          </View>
+          </FadeInView>
 
           {/* Category Selection */}
-          <View className="mx-5 mt-4">
+          <FadeInView delay={400} className="mx-5 mt-4">
             <Text
               className="text-candy-text font-semibold mb-2"
               style={{ fontSize: scaleFont(13, design.fontScale) }}
@@ -325,9 +343,10 @@ export default function AddTransactionScreen() {
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {categories.map((cat) => (
-                <TouchableOpacity
+                <ScalePress
                   key={cat.id}
                   onPress={() => setSelectedCategoryId(cat.id)}
+                  scaleValue={0.95}
                   className="flex-row items-center gap-2 px-3"
                   style={{
                     borderRadius: getCornerRadius(design.radius, "pill"),
@@ -338,6 +357,9 @@ export default function AddTransactionScreen() {
                         : design.palette.surfaceLight,
                     borderWidth: selectedCategoryId === cat.id ? 0 : 1,
                     borderColor: design.palette.borderLight,
+                    ...(selectedCategoryId === cat.id
+                      ? applyShadow(design.shadows.button)
+                      : {}),
                   }}
                 >
                   <FontAwesome
@@ -357,13 +379,13 @@ export default function AddTransactionScreen() {
                   >
                     {cat.name}
                   </Text>
-                </TouchableOpacity>
+                </ScalePress>
               ))}
             </View>
-          </View>
+          </FadeInView>
 
           {/* Submit */}
-          <View className="mx-5 mt-6 mb-8">
+          <FadeInView delay={450} className="mx-5 mt-6 mb-8">
             <CandyButton
               title="Guardar Transaccion"
               icon={<FontAwesome name="check" size={16} color="#fff" />}
@@ -371,7 +393,7 @@ export default function AddTransactionScreen() {
               loading={isSubmitting}
               size="lg"
             />
-          </View>
+          </FadeInView>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

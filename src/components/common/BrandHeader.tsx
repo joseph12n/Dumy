@@ -1,12 +1,16 @@
 import { useSettingsStore } from "@/src/store/settingsStore";
 import {
+    applyShadow,
     getCornerRadius,
     resolveRuntimeDesign,
     scaleFont,
 } from "@/src/theme/designRuntime";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, View } from "react-native";
+import { FadeInView } from "../animated/FadeInView";
+import { ScalePress } from "../animated/ScalePress";
 
 interface HeaderStatus {
   label: string;
@@ -33,69 +37,83 @@ export function BrandHeader({
   const design = resolveRuntimeDesign(settings);
 
   return (
-    <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
-      <View className="flex-row items-center gap-3 flex-1">
-        <View
-          className="w-10 h-10 items-center justify-center border-2 border-candy-white"
-          style={{
-            borderRadius: getCornerRadius(design.radius, "pill"),
-            backgroundColor: design.palette.primary,
-          }}
-        >
-          <Text
-            className="text-candy-white font-bold"
-            style={{ fontSize: scaleFont(16, design.fontScale) }}
+    <FadeInView duration={300} slideFrom={8}>
+      <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
+        <View className="flex-row items-center gap-3 flex-1">
+          <LinearGradient
+            colors={design.gradients.hero.colors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              width: 42,
+              height: 42,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: getCornerRadius(design.radius, "pill"),
+              ...applyShadow(design.shadows.button),
+            }}
           >
-            D
-          </Text>
-        </View>
-
-        <View className="flex-1">
-          <Text
-            className="text-candy-text font-bold"
-            style={{ fontSize: scaleFont(20, design.fontScale) }}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
             <Text
-              className="text-candy-text-secondary"
-              style={{ fontSize: scaleFont(12, design.fontScale) }}
+              className="text-white font-bold"
+              style={{ fontSize: scaleFont(17, design.fontScale) }}
             >
-              {subtitle}
+              D
             </Text>
-          ) : null}
+          </LinearGradient>
 
-          {status ? (
-            <View className="flex-row items-center gap-1 mt-1">
-              <View className={`w-2 h-2 rounded-full ${status.dotClassName}`} />
+          <View className="flex-1">
+            <Text
+              className="text-candy-text font-bold"
+              style={{ fontSize: scaleFont(21, design.fontScale) }}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            {subtitle ? (
               <Text
-                className={`text-xs ${status.textClassName ?? "text-candy-text-secondary"}`}
-                style={{ fontSize: scaleFont(11, design.fontScale) }}
+                className="text-candy-text-secondary"
+                style={{ fontSize: scaleFont(12, design.fontScale) }}
+                numberOfLines={2}
               >
-                {status.label}
+                {subtitle}
               </Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
+            ) : null}
 
-      {rightIcon && onRightPress ? (
-        <TouchableOpacity
-          onPress={onRightPress}
-          className="w-9 h-9 items-center justify-center"
-          style={{
-            borderRadius: getCornerRadius(design.radius, "pill"),
-            backgroundColor: design.palette.surfaceLight,
-          }}
-        >
-          <FontAwesome
-            name={rightIcon}
-            size={18}
-            color={design.palette.primary}
-          />
-        </TouchableOpacity>
-      ) : null}
-    </View>
+            {status ? (
+              <View className="flex-row items-center gap-1 mt-1">
+                <View
+                  className={`w-2 h-2 rounded-full ${status.dotClassName}`}
+                />
+                <Text
+                  className={`text-xs ${status.textClassName ?? "text-candy-text-secondary"}`}
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                  numberOfLines={1}
+                >
+                  {status.label}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        {rightIcon && onRightPress ? (
+          <ScalePress
+            onPress={onRightPress}
+            haptic
+            className="w-10 h-10 items-center justify-center"
+            style={{
+              borderRadius: getCornerRadius(design.radius, "pill"),
+              backgroundColor: design.palette.surfaceLight,
+            }}
+          >
+            <FontAwesome
+              name={rightIcon}
+              size={18}
+              color={design.palette.primary}
+            />
+          </ScalePress>
+        ) : null}
+      </View>
+    </FadeInView>
   );
 }

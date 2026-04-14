@@ -1,75 +1,107 @@
+import { AnimatedNumber, FadeInView } from "@/src/components/animated";
 import { CandyButton, CandyCard } from "@/src/components/common";
 import { useCategories } from "@/src/hooks/useCategories";
-import {
-    useApplyUnifiedDesignPreset,
-    useSetting,
-    useTheme,
-    useUpdateSetting,
-} from "@/src/hooks/useSettings";
+import { useSetting, useUpdateSetting } from "@/src/hooks/useSettings";
 import { useTransactions } from "@/src/hooks/useTransactions";
 import {
-    QUICK_UNIFIED_DESIGN_PRESETS,
+    applyShadow,
+    getCornerRadius,
+    resolveRuntimeDesign,
+    scaleFont,
+    toRgba,
     UiDensity,
     UiPreset,
     UiRadius,
-    resolveRuntimeDesign,
-    toRgba,
 } from "@/src/theme/designRuntime";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import * as ImagePicker from "expo-image-picker";
-import React from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     Alert,
     Image,
     ScrollView,
     Text,
     TextInput,
-    TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-interface MenuItemProps {
-  icon: React.ComponentProps<typeof FontAwesome>["name"];
-  label: string;
+type RuntimeDesignType = ReturnType<typeof resolveRuntimeDesign>;
+
+function SectionTitle({
+  title,
+  subtitle,
+  design,
+}: {
+  title: string;
   subtitle: string;
-  iconColor?: string;
-  onPress?: () => void;
+  design: RuntimeDesignType;
+}) {
+  return (
+    <View className="mb-3 px-1">
+      <Text
+        style={{
+          fontSize: scaleFont(17, design.fontScale),
+          color: design.palette.textLight,
+          fontWeight: "700",
+        }}
+        numberOfLines={1}
+      >
+        {title}
+      </Text>
+      <Text
+        className="text-candy-text-secondary mt-1"
+        style={{ fontSize: scaleFont(12, design.fontScale) }}
+        numberOfLines={2}
+      >
+        {subtitle}
+      </Text>
+    </View>
+  );
 }
 
-function MenuItem({
-  icon,
+function StatTile({
   label,
-  subtitle,
-  iconColor = "#e040a0",
-  onPress,
-}: MenuItemProps) {
+  value,
+  design,
+}: {
+  label: string;
+  value: number;
+  design: RuntimeDesignType;
+}) {
   return (
-    <TouchableOpacity
-      className="flex-row items-center gap-4 py-3"
-      onPress={onPress}
-    >
-      <View
-        className="w-10 h-10 rounded-full items-center justify-center"
-        style={{ backgroundColor: iconColor + "20" }}
+    <CandyCard variant="glass" animated={false} className="py-4">
+      <Text
+        className="text-candy-text-secondary"
+        style={{ fontSize: scaleFont(11, design.fontScale) }}
       >
-        <FontAwesome name={icon} size={18} color={iconColor} />
-      </View>
-      <View className="flex-1">
-        <Text className="text-candy-text text-sm font-semibold">{label}</Text>
-        <Text className="text-candy-text-secondary text-xs">{subtitle}</Text>
-      </View>
-      <FontAwesome name="chevron-right" size={12} color="#907898" />
-    </TouchableOpacity>
+        {label}
+      </Text>
+      <AnimatedNumber
+        value={value}
+        style={{
+          fontSize: scaleFont(26, design.fontScale),
+          color: design.palette.textLight,
+          marginTop: 6,
+          fontWeight: "800",
+        }}
+      />
+    </CandyCard>
   );
 }
 
 export default function ProfileScreen() {
-  const currentTheme = useTheme();
-  const applyUnifiedPreset = useApplyUnifiedDesignPreset();
-  const updateSetting = useUpdateSetting();
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
+
   const { transactions } = useTransactions();
   const { categories } = useCategories();
+  const updateSetting = useUpdateSetting();
+
   const savedName =
     useSetting("profile_name", "Usuario Dumy") || "Usuario Dumy";
   const avatarUri = useSetting("profile_avatar_uri");
@@ -80,18 +112,27 @@ export default function ProfileScreen() {
     "comfortable") as UiDensity;
   const uiRadius = (useSetting("ui_radius", "soft") || "soft") as UiRadius;
   const uiFontScale = Number(useSetting("ui_font_scale", "1") || "1");
-  const runtimeDesign = resolveRuntimeDesign({
+
+  const design = resolveRuntimeDesign({
     ui_preset: designPreset,
     ui_density: uiDensity,
     ui_radius: uiRadius,
     ui_font_scale: String(uiFontScale),
     accent_color: accentColor,
   });
-  const [displayName, setDisplayName] = React.useState(savedName);
 
-  React.useEffect(() => {
+  const [displayName, setDisplayName] = useState(savedName);
+
+  useEffect(() => {
     setDisplayName(savedName);
   }, [savedName]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buenos dias";
+    if (hour < 19) return "Buenas tardes";
+    return "Buenas noches";
+  }, []);
 
   const saveName = async () => {
     const normalized = displayName.trim();
@@ -124,223 +165,195 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const applyUnified = async (presetId: string) => {
-    const preset = QUICK_UNIFIED_DESIGN_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    await applyUnifiedPreset(preset);
-  };
-
   return (
     <SafeAreaView
       className="flex-1"
-      style={{ backgroundColor: runtimeDesign.palette.backgroundLight }}
+      style={{ backgroundColor: design.palette.backgroundLight }}
     >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-5 pt-4 pb-2">
-          <View className="flex-row items-center gap-2">
-            <View
-              className="w-9 h-9 rounded-full items-center justify-center"
-              style={{ backgroundColor: runtimeDesign.palette.primary }}
-            >
-              <Text className="text-white text-base font-bold">D</Text>
-            </View>
-            <Text className="text-candy-text text-xl font-bold">Perfil</Text>
-          </View>
-        </View>
-
-        {/* Profile Card */}
-        <View className="mx-5 mt-4">
-          <CandyCard variant="glass" className="items-center py-6">
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                className="w-20 h-20 rounded-full mb-3"
-                resizeMode="cover"
-              />
-            ) : (
-              <View
-                className="w-20 h-20 rounded-full items-center justify-center mb-3"
-                style={{ backgroundColor: accentColor }}
-              >
-                <FontAwesome name="user" size={36} color="#fff" />
-              </View>
-            )}
-            <Text className="text-candy-text text-lg font-bold">
-              {savedName}
-            </Text>
-            <Text className="text-candy-text-secondary text-sm">
-              Usuario de Dumy
-            </Text>
-
-            <View className="w-full mt-4 px-2 gap-2">
-              <Text className="text-candy-text text-xs font-semibold">
-                Nombre visible
-              </Text>
-              <TextInput
-                className="bg-candy-white border border-candy-outline-light rounded-candy px-3 py-2 text-candy-text"
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholder="Escribe tu nombre"
-                placeholderTextColor="#907898"
-              />
-              <View className="flex-row gap-2">
-                <View className="flex-1">
-                  <CandyButton
-                    title="Guardar nombre"
-                    onPress={saveName}
-                    variant="secondary"
-                  />
-                </View>
-                <View className="flex-1">
-                  <CandyButton
-                    title="Cambiar foto"
-                    onPress={handlePickPhoto}
-                    variant="primary"
-                  />
-                </View>
-              </View>
-              {!!avatarUri && (
-                <CandyButton
-                  title="Quitar foto"
-                  onPress={clearPhoto}
-                  variant="ghost"
+        <FadeInView delay={30} className="mx-5 mt-4">
+          <LinearGradient
+            colors={design.gradients.hero.colors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: getCornerRadius(design.radius, "card"),
+              padding: 20,
+              ...applyShadow(design.shadows.hero),
+            }}
+          >
+            <View className="flex-row items-center gap-4">
+              {avatarUri ? (
+                <Image
+                  source={{ uri: avatarUri }}
+                  className="w-16 h-16 rounded-full"
+                  resizeMode="cover"
                 />
+              ) : (
+                <View
+                  className="w-16 h-16 items-center justify-center"
+                  style={{
+                    borderRadius: 999,
+                    backgroundColor: "rgba(255,255,255,0.2)",
+                  }}
+                >
+                  <FontAwesome name="user" size={24} color="#fff" />
+                </View>
               )}
-            </View>
 
-            {/* Stats */}
-            <View className="flex-row gap-6 mt-4">
-              <View className="items-center">
-                <Text className="text-candy-text text-lg font-bold">
-                  {transactions.length}
+              <View className="flex-1">
+                <Text
+                  className="text-white/80"
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                >
+                  {greeting}
                 </Text>
-                <Text className="text-candy-text-secondary text-xs">
-                  Transacciones
+                <Text
+                  style={{
+                    fontSize: scaleFont(23, design.fontScale),
+                    color: "#fff",
+                    fontWeight: "800",
+                  }}
+                  numberOfLines={1}
+                >
+                  {savedName}
+                </Text>
+                <Text
+                  className="text-white/80"
+                  style={{ fontSize: scaleFont(12, design.fontScale) }}
+                  numberOfLines={1}
+                >
+                  Perfil personal y actividad de tu cuenta
                 </Text>
               </View>
-              <View className="w-px bg-candy-outline-light" />
-              <View className="items-center">
-                <Text className="text-candy-text text-lg font-bold">
-                  {categories.length}
+            </View>
+          </LinearGradient>
+        </FadeInView>
+
+        <FadeInView delay={80} className="mx-5 mt-5">
+          <View className={`gap-3 ${isWide ? "flex-row" : ""}`}>
+            <View style={{ width: isWide ? "48.5%" : "100%" }}>
+              <StatTile
+                label="Transacciones"
+                value={transactions.length}
+                design={design}
+              />
+            </View>
+            <View style={{ width: isWide ? "48.5%" : "100%" }}>
+              <StatTile
+                label="Categorias"
+                value={categories.length}
+                design={design}
+              />
+            </View>
+          </View>
+        </FadeInView>
+
+        <FadeInView delay={120} className="mx-5 mt-5">
+          <SectionTitle
+            title="Identidad"
+            subtitle="Edita tu nombre y foto para personalizar la experiencia"
+            design={design}
+          />
+          <CandyCard variant="glass" animated={false}>
+            <Text
+              className="text-candy-text mb-2"
+              style={{
+                fontSize: scaleFont(12, design.fontScale),
+                fontWeight: "700",
+              }}
+            >
+              Nombre visible
+            </Text>
+            <TextInput
+              className="border px-4 py-3 bg-white"
+              style={{
+                borderColor: design.palette.borderLight,
+                borderRadius: getCornerRadius(design.radius, "card"),
+                color: design.palette.textLight,
+                fontSize: scaleFont(14, design.fontScale),
+              }}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Tu nombre"
+              placeholderTextColor={design.palette.borderDark}
+            />
+
+            <View className={`mt-3 gap-2 ${isWide ? "flex-row" : ""}`}>
+              <View className={isWide ? "flex-1" : ""}>
+                <CandyButton
+                  title="Guardar"
+                  onPress={saveName}
+                  variant="primary"
+                />
+              </View>
+              <View className={isWide ? "flex-1" : ""}>
+                <CandyButton
+                  title="Cambiar foto"
+                  onPress={handlePickPhoto}
+                  variant="outline"
+                />
+              </View>
+            </View>
+
+            {!!avatarUri && (
+              <CandyButton
+                title="Quitar foto"
+                onPress={clearPhoto}
+                variant="ghost"
+                className="mt-2"
+              />
+            )}
+          </CandyCard>
+        </FadeInView>
+
+        <FadeInView delay={170} className="mx-5 mt-5 mb-10">
+          <SectionTitle
+            title="Configuracion de la app"
+            subtitle="Los ajustes visuales y del sistema estan en una seccion dedicada"
+            design={design}
+          />
+          <CandyCard variant="default" animated={false}>
+            <View className="flex-row items-center gap-3">
+              <View
+                className="w-11 h-11 items-center justify-center"
+                style={{
+                  borderRadius: getCornerRadius(design.radius, "pill"),
+                  backgroundColor: toRgba(design.palette.primary, 0.16),
+                }}
+              >
+                <FontAwesome
+                  name="sliders"
+                  size={17}
+                  color={design.palette.primary}
+                />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-candy-text"
+                  style={{
+                    fontSize: scaleFont(14, design.fontScale),
+                    fontWeight: "700",
+                  }}
+                >
+                  Centro de configuracion
                 </Text>
-                <Text className="text-candy-text-secondary text-xs">
-                  Categorias
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(12, design.fontScale) }}
+                >
+                  Tema, presets, densidad, bordes y categorias en un solo lugar.
                 </Text>
               </View>
             </View>
-          </CandyCard>
-        </View>
 
-        {/* Cambio rapido unificado */}
-        <View className="mx-5 mt-5">
-          <Text className="text-candy-text text-base font-bold mb-3">
-            Cambio rapido (1 clic)
-          </Text>
-          <CandyCard variant="glass">
-            <View className="gap-2">
-              {QUICK_UNIFIED_DESIGN_PRESETS.map((preset) => {
-                const selected =
-                  designPreset === preset.uiPreset &&
-                  uiDensity === preset.density &&
-                  uiRadius === preset.radius &&
-                  String(uiFontScale) === preset.fontScale &&
-                  currentTheme === preset.theme &&
-                  accentColor.toLowerCase() ===
-                    preset.accentColor.toLowerCase();
-
-                return (
-                  <TouchableOpacity
-                    key={preset.id}
-                    onPress={() => applyUnified(preset.id)}
-                    className="px-3 py-3 border"
-                    style={{
-                      borderRadius: 14,
-                      borderColor: selected
-                        ? runtimeDesign.palette.primary
-                        : runtimeDesign.palette.borderLight,
-                      borderWidth: selected ? 2 : 1,
-                      backgroundColor: toRgba(preset.accentColor, 0.08),
-                    }}
-                  >
-                    <View className="flex-row items-center gap-3">
-                      <View
-                        className="w-7 h-7 rounded-full"
-                        style={{ backgroundColor: preset.accentColor }}
-                      />
-                      <View className="flex-1">
-                        <Text className="text-candy-text text-sm font-semibold">
-                          {preset.title}
-                        </Text>
-                        <Text className="text-candy-text-secondary text-xs">
-                          {preset.subtitle}
-                        </Text>
-                      </View>
-                      {selected && (
-                        <FontAwesome
-                          name="check"
-                          size={14}
-                          color={runtimeDesign.palette.primary}
-                        />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </CandyCard>
-        </View>
-
-        {/* Menu Items */}
-        <View className="mx-5 mt-5">
-          <Text className="text-candy-text text-base font-bold mb-3">
-            Configuracion
-          </Text>
-          <CandyCard variant="glass">
-            <MenuItem
-              icon="tags"
-              label="Categorias"
-              subtitle="Gestiona tus categorias"
-              iconColor="#7c52aa"
-            />
-            <View className="border-t border-candy-outline-light" />
-            <MenuItem
-              icon="bell"
-              label="Notificaciones"
-              subtitle="Alertas y recordatorios"
-              iconColor="#0096cc"
-            />
-            <View className="border-t border-candy-outline-light" />
-            <MenuItem
-              icon="shield"
-              label="Privacidad"
-              subtitle="Tus datos son locales"
-              iconColor="#e040a0"
-            />
-            <View className="border-t border-candy-outline-light" />
-            <MenuItem
-              icon="database"
-              label="Datos"
-              subtitle="Exportar o importar datos"
-              iconColor="#7c52aa"
+            <CandyButton
+              title="Abrir configuracion"
+              onPress={() => router.push("../modal")}
+              className="mt-3"
             />
           </CandyCard>
-        </View>
-
-        {/* About */}
-        <View className="mx-5 mt-5 mb-8">
-          <CandyCard variant="purple">
-            <View className="items-center py-2">
-              <Text className="text-candy-text text-sm font-bold mb-1">
-                Dumy v1.0.0
-              </Text>
-              <Text className="text-candy-text-secondary text-xs text-center">
-                Tu asistente financiero local y privado.{"\n"}Hecho con amor en
-                Colombia.
-              </Text>
-            </View>
-          </CandyCard>
-        </View>
+        </FadeInView>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,14 +1,19 @@
 import {
+    AnimatedNumber,
+    FadeInView,
+    ScalePress,
+    StaggeredList,
+} from "@/src/components/animated";
+import {
     BrandHeader,
     CandyCard,
     EmptyState,
     IconBadge,
 } from "@/src/components/common";
-import { useCategories } from "@/src/hooks/useCategories";
-import { useMonthlyStats } from "@/src/hooks/useStats";
-import { useRecentTransactions } from "@/src/hooks/useTransactions";
+import { useFinancialSystem } from "@/src/hooks/useFinancialSystem";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import {
+    applyShadow,
     getCornerRadius,
     resolveRuntimeDesign,
     scaleFont,
@@ -21,20 +26,85 @@ import {
 } from "@/src/utils/currency";
 import { formatDateShort } from "@/src/utils/dates";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+interface QuickActionItem {
+  key: string;
+  label: string;
+  icon: React.ComponentProps<typeof FontAwesome>["name"];
+  color: string;
+  bg: string;
+  onPress: () => void;
+}
+
+function QuickActionButton({
+  item,
+  radius,
+  fontScale,
+}: {
+  item: QuickActionItem;
+  radius: number;
+  fontScale: number;
+}) {
+  return (
+    <ScalePress
+      onPress={item.onPress}
+      className="w-full"
+      style={{
+        width: "100%",
+        minHeight: 98,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 16,
+        paddingHorizontal: 8,
+        borderRadius: radius,
+        backgroundColor: item.bg,
+      }}
+    >
+      <View
+        className="w-10 h-10 items-center justify-center"
+        style={{
+          borderRadius: 999,
+          backgroundColor: toRgba(item.color, 0.16),
+        }}
+      >
+        <FontAwesome name={item.icon} size={18} color={item.color} />
+      </View>
+      <Text
+        className="font-semibold mt-2 text-center"
+        style={{
+          color: item.color,
+          fontSize: scaleFont(12, fontScale),
+        }}
+        numberOfLines={1}
+      >
+        {item.label}
+      </Text>
+    </ScalePress>
+  );
+}
+
 export default function DashboardScreen() {
+  const { width } = useWindowDimensions();
+  const isNarrow = width < 390;
+  const isMobile = width < 768;
   const router = useRouter();
   const settings = useSettingsStore((s) => s.settings);
   const design = resolveRuntimeDesign(settings);
   const now = new Date();
-  const { periodStats, categoryBreakdown, trends, budgetStatus } =
-    useMonthlyStats(now.getFullYear(), now.getMonth() + 1);
-  const recentTransactions = useRecentTransactions(5);
-  const { categories } = useCategories();
+  const financial = useFinancialSystem({
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  });
+  const periodStats = financial.stats;
+  const categoryBreakdown = financial.categoryBreakdown;
+  const trends = financial.trends;
+  const budgetStatus = financial.budgetStatus;
+  const recentTransactions = financial.recentTransactions.slice(0, 5);
 
   const balance = periodStats?.balance ?? 0;
   const totalIncome = periodStats?.totalIncome ?? 0;
@@ -42,7 +112,34 @@ export default function DashboardScreen() {
   const trendPercent = trends?.monthOverMonth ?? 0;
 
   const getCategoryInfo = (categoryId: string) =>
-    categories.find((c) => c.id === categoryId);
+    financial.findCategoryById(categoryId);
+
+  const quickActions = [
+    {
+      key: "add",
+      label: "Agregar",
+      icon: "plus-circle" as const,
+      color: design.palette.primary,
+      bg: toRgba(design.palette.primary, 0.12),
+      onPress: () => router.push("/add"),
+    },
+    {
+      key: "scan",
+      label: "Escanear",
+      icon: "camera" as const,
+      color: design.palette.secondary,
+      bg: toRgba(design.palette.secondary, 0.12),
+      onPress: () => router.push("/scan"),
+    },
+    {
+      key: "reports",
+      label: "Reportes",
+      icon: "bar-chart" as const,
+      color: design.palette.secondary,
+      bg: toRgba(design.palette.secondary, 0.12),
+      onPress: () => router.push("/history"),
+    },
+  ];
 
   return (
     <SafeAreaView
@@ -54,150 +151,161 @@ export default function DashboardScreen() {
           title="Dumy"
           subtitle="Control financiero local-first"
           rightIcon="cog"
-          onRightPress={() => router.push("/modal")}
+          onRightPress={() => router.push("../modal")}
         />
 
-        {/* Balance Card */}
-        <View
-          className="mx-5 mt-4 p-5"
-          style={{
-            borderRadius: getCornerRadius(design.radius, "card"),
-            backgroundColor: design.palette.primary,
-          }}
-        >
-          <Text
-            className="text-white/80 font-medium mb-1"
-            style={{ fontSize: scaleFont(13, design.fontScale) }}
+        {/* Hero Balance Card with Gradient */}
+        <FadeInView delay={100} slideFrom={24}>
+          <LinearGradient
+            colors={design.gradients.hero.colors}
+            start={design.gradients.hero.start}
+            end={design.gradients.hero.end}
+            className="mx-5 mt-4 p-6"
+            style={{
+              borderRadius: getCornerRadius(design.radius, "card"),
+              ...applyShadow(design.shadows.hero),
+            }}
           >
-            Balance del mes
-          </Text>
-          <Text
-            className="text-white font-bold"
-            style={{ fontSize: scaleFont(30, design.fontScale) }}
-          >
-            {formatCOP(balance)}
-          </Text>
-          <View className="flex-row items-center mt-2 gap-1">
-            <FontAwesome
-              name={trendPercent >= 0 ? "arrow-up" : "arrow-down"}
-              size={12}
-              color={trendPercent >= 0 ? "#c8eaff" : "#ffe8e8"}
-            />
             <Text
-              className="text-white/90"
+              className="text-white/80 font-medium mb-1"
               style={{ fontSize: scaleFont(13, design.fontScale) }}
             >
-              {formatPercentage(Math.abs(trendPercent))} vs mes anterior
+              Balance del mes
             </Text>
-          </View>
-        </View>
+            <AnimatedNumber
+              value={balance}
+              formatter={(n) => formatCOP(Math.round(n))}
+              style={{
+                fontSize: scaleFont(32, design.fontScale),
+                fontWeight: "800",
+                color: "#ffffff",
+              }}
+            />
+            <View className="flex-row items-center mt-3 gap-2">
+              <View
+                className="flex-row items-center gap-1 px-3 py-1 rounded-full"
+                style={{
+                  backgroundColor:
+                    trendPercent >= 0
+                      ? "rgba(255,255,255,0.2)"
+                      : "rgba(255,100,100,0.3)",
+                }}
+              >
+                <FontAwesome
+                  name={trendPercent >= 0 ? "arrow-up" : "arrow-down"}
+                  size={10}
+                  color="#fff"
+                />
+                <Text
+                  className="text-white font-semibold"
+                  style={{ fontSize: scaleFont(12, design.fontScale) }}
+                >
+                  {formatPercentage(Math.abs(trendPercent))}
+                </Text>
+              </View>
+              <Text
+                className="text-white/70"
+                style={{ fontSize: scaleFont(12, design.fontScale) }}
+              >
+                vs mes anterior
+              </Text>
+            </View>
+          </LinearGradient>
+        </FadeInView>
 
         {/* Income / Expense Cards */}
-        <View className="flex-row gap-3 mx-5 mt-4">
-          <CandyCard
-            variant="glass"
-            className="flex-1 flex-row items-center gap-3"
-          >
-            <IconBadge icon="arrow-down" color="#0096cc" bgColor="#c8eaff" />
-            <View>
-              <Text
-                className="text-candy-text-secondary"
-                style={{ fontSize: scaleFont(11, design.fontScale) }}
-              >
-                Ingresos
-              </Text>
-              <Text
-                className="text-candy-text font-bold"
-                style={{ fontSize: scaleFont(16, design.fontScale) }}
-              >
-                {formatCOPCompact(totalIncome)}
-              </Text>
-            </View>
-          </CandyCard>
-          <CandyCard
-            variant="glass"
-            className="flex-1 flex-row items-center gap-3"
-          >
-            <IconBadge icon="arrow-up" color="#e53e3e" bgColor="#ffe8e8" />
-            <View>
-              <Text
-                className="text-candy-text-secondary"
-                style={{ fontSize: scaleFont(11, design.fontScale) }}
-              >
-                Gastos
-              </Text>
-              <Text
-                className="text-candy-text font-bold"
-                style={{ fontSize: scaleFont(16, design.fontScale) }}
-              >
-                {formatCOPCompact(totalExpense)}
-              </Text>
-            </View>
-          </CandyCard>
+        <View className={`gap-3 mx-5 mt-4 ${isNarrow ? "" : "flex-row"}`}>
+          <FadeInView delay={200} className="flex-1">
+            <CandyCard
+              variant="glass"
+              animated={false}
+              className="flex-row items-center gap-3"
+            >
+              <IconBadge
+                icon="arrow-down"
+                color={design.palette.secondary}
+                bgColor={toRgba(design.palette.secondary, 0.2)}
+              />
+              <View>
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                >
+                  Ingresos
+                </Text>
+                <AnimatedNumber
+                  value={totalIncome}
+                  formatter={(n) => formatCOPCompact(Math.round(n))}
+                  style={{
+                    fontSize: scaleFont(16, design.fontScale),
+                    fontWeight: "700",
+                    color: design.palette.textLight,
+                  }}
+                />
+              </View>
+            </CandyCard>
+          </FadeInView>
+          <FadeInView delay={250} className="flex-1">
+            <CandyCard
+              variant="glass"
+              animated={false}
+              className="flex-row items-center gap-3"
+            >
+              <IconBadge icon="arrow-up" color="#e53e3e" bgColor="#ffe8e8" />
+              <View>
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                >
+                  Gastos
+                </Text>
+                <AnimatedNumber
+                  value={totalExpense}
+                  formatter={(n) => formatCOPCompact(Math.round(n))}
+                  style={{
+                    fontSize: scaleFont(16, design.fontScale),
+                    fontWeight: "700",
+                    color: design.palette.textLight,
+                  }}
+                />
+              </View>
+            </CandyCard>
+          </FadeInView>
         </View>
 
         {/* Quick Actions */}
-        <View className="flex-row gap-3 mx-5 mt-5">
-          <TouchableOpacity
-            onPress={() => router.push("/add")}
-            className="flex-1 items-center py-4 gap-2"
-            style={{
-              borderRadius: getCornerRadius(design.radius, "card"),
-              backgroundColor: toRgba(design.palette.primary, 0.16),
-            }}
+        <FadeInView delay={300}>
+          <View
+            className="mx-5 mt-5 flex-row flex-wrap justify-between"
+            style={{ rowGap: 12 }}
           >
-            <FontAwesome
-              name="plus-circle"
-              size={24}
-              color={design.palette.primary}
-            />
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: design.palette.primary }}
-            >
-              Agregar Gasto
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/scan")}
-            className="flex-1 items-center py-4 gap-2"
-            style={{
-              borderRadius: getCornerRadius(design.radius, "card"),
-              backgroundColor: toRgba(design.palette.secondary, 0.16),
-            }}
-          >
-            <FontAwesome
-              name="camera"
-              size={24}
-              color={design.palette.secondary}
-            />
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: design.palette.secondary }}
-            >
-              Escanear Recibo
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push("/history")}
-            className="flex-1 items-center py-4 gap-2"
-            style={{
-              borderRadius: getCornerRadius(design.radius, "card"),
-              backgroundColor: toRgba("#0096cc", 0.16),
-            }}
-          >
-            <FontAwesome name="bar-chart" size={24} color="#0096cc" />
-            <Text className="text-candy-blue text-xs font-semibold">
-              Reportes
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {quickActions.map((action) => (
+              <View
+                key={action.key}
+                style={{
+                  width: isMobile
+                    ? action.key === "reports"
+                      ? "100%"
+                      : "48.5%"
+                    : "31.5%",
+                }}
+              >
+                <QuickActionButton
+                  item={action}
+                  radius={getCornerRadius(design.radius, "card")}
+                  fontScale={design.fontScale}
+                />
+              </View>
+            ))}
+          </View>
+        </FadeInView>
 
         {/* Budget Alerts */}
         {budgetStatus.filter((b) => b.isOverBudget).length > 0 && (
-          <View className="mx-5 mt-5">
+          <FadeInView delay={350} className="mx-5 mt-5">
             <CandyCard
               variant="default"
+              animated={false}
               className="border-candy-error bg-candy-error-bg"
             >
               <View className="flex-row items-center gap-2">
@@ -212,64 +320,69 @@ export default function DashboardScreen() {
                 </Text>
               </View>
             </CandyCard>
-          </View>
+          </FadeInView>
         )}
 
         {/* Top Categories */}
         {categoryBreakdown.length > 0 && (
-          <View className="mx-5 mt-5">
+          <FadeInView delay={400} className="mx-5 mt-5">
             <Text className="text-candy-text text-base font-bold mb-3">
               Top Categorias
             </Text>
-            <CandyCard variant="glass">
-              {categoryBreakdown.slice(0, 3).map((cat, idx) => (
-                <View
-                  key={cat.categoryId}
-                  className={`flex-row items-center justify-between ${idx > 0 ? "mt-3 pt-3 border-t border-candy-outline-light" : ""}`}
-                >
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      className="w-8 h-8 rounded-full items-center justify-center"
-                      style={{ backgroundColor: cat.categoryColor + "20" }}
-                    >
-                      <FontAwesome
-                        name={(cat.categoryIcon as any) || "tag"}
-                        size={14}
-                        color={cat.categoryColor}
-                      />
+            <CandyCard variant="glass" animated={false}>
+              <StaggeredList staggerDelay={60}>
+                {categoryBreakdown.slice(0, 3).map((cat, idx) => (
+                  <View
+                    key={cat.categoryId}
+                    className={`flex-row items-center justify-between ${idx > 0 ? "mt-3 pt-3 border-t border-candy-outline-light" : ""}`}
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <View
+                        className="w-9 h-9 rounded-full items-center justify-center"
+                        style={{ backgroundColor: cat.categoryColor + "20" }}
+                      >
+                        <FontAwesome
+                          name={(cat.categoryIcon as any) || "tag"}
+                          size={14}
+                          color={cat.categoryColor}
+                        />
+                      </View>
+                      <Text
+                        className="text-candy-text text-sm font-medium"
+                        numberOfLines={1}
+                      >
+                        {cat.categoryName}
+                      </Text>
                     </View>
-                    <Text className="text-candy-text text-sm font-medium">
-                      {cat.categoryName}
-                    </Text>
+                    <View className="items-end">
+                      <Text className="text-candy-text text-sm font-bold">
+                        {formatCOPCompact(cat.totalSpent)}
+                      </Text>
+                      <Text className="text-candy-text-secondary text-xs">
+                        {formatPercentage(cat.percentage, 0)}
+                      </Text>
+                    </View>
                   </View>
-                  <View className="items-end">
-                    <Text className="text-candy-text text-sm font-bold">
-                      {formatCOPCompact(cat.totalSpent)}
-                    </Text>
-                    <Text className="text-candy-text-secondary text-xs">
-                      {formatPercentage(cat.percentage, 0)}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                ))}
+              </StaggeredList>
             </CandyCard>
-          </View>
+          </FadeInView>
         )}
 
         {/* Recent Transactions */}
-        <View className="mx-5 mt-5 mb-6">
+        <FadeInView delay={450} className="mx-5 mt-5 mb-6">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-candy-text text-base font-bold">
               Transacciones Recientes
             </Text>
-            <TouchableOpacity onPress={() => router.push("/history")}>
+            <ScalePress onPress={() => router.push("/history")} haptic={false}>
               <Text
                 className="text-sm font-semibold"
                 style={{ color: design.palette.primary }}
               >
                 Ver todo
               </Text>
-            </TouchableOpacity>
+            </ScalePress>
           </View>
 
           {recentTransactions.length === 0 ? (
@@ -279,69 +392,76 @@ export default function DashboardScreen() {
               subtitle="Agrega tu primer ingreso o gasto"
             />
           ) : (
-            <CandyCard variant="glass">
-              {recentTransactions.map((tx, idx) => {
-                const cat = getCategoryInfo(tx.categoryId);
-                const isExpense = tx.type === "expense";
-                return (
-                  <View
-                    key={tx.id}
-                    className={`flex-row items-center justify-between ${idx > 0 ? "mt-3 pt-3 border-t border-candy-outline-light" : ""}`}
-                  >
-                    <View className="flex-row items-center gap-3 flex-1">
-                      <View
-                        className="w-10 h-10 rounded-full items-center justify-center"
-                        style={{
-                          backgroundColor: (cat?.color ?? "#e040a0") + "20",
-                        }}
-                      >
-                        <FontAwesome
-                          name={(cat?.icon as any) || "tag"}
-                          size={16}
-                          color={cat?.color ?? "#e040a0"}
-                        />
-                      </View>
-                      <View className="flex-1">
-                        <Text
-                          className="text-candy-text text-sm font-medium"
-                          numberOfLines={1}
-                        >
-                          {tx.description}
-                        </Text>
-                        <Text className="text-candy-text-secondary text-xs">
-                          {formatDateShort(tx.date)}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text
-                      className={`text-sm font-bold ${isExpense ? "text-candy-error" : "text-candy-blue"}`}
+            <CandyCard variant="glass" animated={false}>
+              <StaggeredList staggerDelay={50}>
+                {recentTransactions.map((tx, idx) => {
+                  const cat = getCategoryInfo(tx.categoryId);
+                  const isExpense = tx.type === "expense";
+                  return (
+                    <View
+                      key={tx.id}
+                      className={`flex-row items-center justify-between ${idx > 0 ? "mt-3 pt-3 border-t border-candy-outline-light" : ""}`}
                     >
-                      {isExpense ? "-" : "+"}
-                      {formatCOP(tx.amount)}
-                    </Text>
-                  </View>
-                );
-              })}
+                      <View className="flex-row items-center gap-3 flex-1">
+                        <View
+                          className="w-10 h-10 rounded-full items-center justify-center"
+                          style={{
+                            backgroundColor: (cat?.color ?? "#e040a0") + "20",
+                          }}
+                        >
+                          <FontAwesome
+                            name={(cat?.icon as any) || "tag"}
+                            size={16}
+                            color={cat?.color ?? "#e040a0"}
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text
+                            className="text-candy-text text-sm font-medium"
+                            numberOfLines={1}
+                          >
+                            {tx.description}
+                          </Text>
+                          <Text className="text-candy-text-secondary text-xs">
+                            {formatDateShort(tx.date)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text
+                        className={`text-sm font-bold ${isExpense ? "text-candy-error" : "text-candy-blue"}`}
+                      >
+                        {isExpense ? "-" : "+"}
+                        {formatCOP(tx.amount)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </StaggeredList>
             </CandyCard>
           )}
-        </View>
+        </FadeInView>
 
         {/* Motivational Banner */}
-        <View
-          className="mx-5 mb-8 p-4"
-          style={{
-            borderRadius: getCornerRadius(design.radius, "card"),
-            backgroundColor: design.palette.secondary,
-          }}
-        >
-          <Text
-            className="text-white font-medium text-center"
-            style={{ fontSize: scaleFont(13, design.fontScale) }}
+        <FadeInView delay={500} className="mx-5 mb-8">
+          <LinearGradient
+            colors={design.gradients.secondary.colors}
+            start={design.gradients.secondary.start}
+            end={design.gradients.secondary.end}
+            className="p-5"
+            style={{
+              borderRadius: getCornerRadius(design.radius, "card"),
+              ...applyShadow(design.shadows.card),
+            }}
           >
-            Registra tus gastos diarios y mejora tu control con la linea grafica
-            Dumy.
-          </Text>
-        </View>
+            <Text
+              className="text-white font-semibold text-center"
+              style={{ fontSize: scaleFont(14, design.fontScale) }}
+            >
+              Registra tus gastos diarios y mejora tu control con la linea
+              grafica Dumy.
+            </Text>
+          </LinearGradient>
+        </FadeInView>
       </ScrollView>
     </SafeAreaView>
   );

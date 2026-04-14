@@ -1,11 +1,13 @@
 import { useColorScheme } from "@/components/useColorScheme";
 import { useSettingsStore } from "@/src/store/settingsStore";
 import {
+    applyShadow,
     getCornerRadius,
     resolveRuntimeDesign,
     scaleFont,
 } from "@/src/theme/designRuntime";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
@@ -19,28 +21,46 @@ function TabIcon({
   color: string;
   focused: boolean;
 }) {
-  return <FontAwesome size={22} name={name} color={color} />;
+  return (
+    <View className="items-center">
+      <FontAwesome size={22} name={name} color={color} />
+      {focused && (
+        <View
+          className="w-1.5 h-1.5 rounded-full mt-1"
+          style={{ backgroundColor: color }}
+        />
+      )}
+    </View>
+  );
 }
 
 function AddTabIcon({
   focused,
-  accentColor,
+  gradientColors,
   cornerRadius,
 }: {
   focused: boolean;
-  accentColor: string;
+  gradientColors: [string, string];
   cornerRadius: number;
 }) {
   return (
-    <View
-      className="w-12 h-12 rounded-full items-center justify-center -mt-3"
+    <LinearGradient
+      colors={gradientColors}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      className="w-14 h-14 items-center justify-center -mt-4"
       style={{
-        backgroundColor: focused ? accentColor : `${accentColor}CC`,
         borderRadius: cornerRadius,
+        opacity: focused ? 1 : 0.85,
+        shadowColor: gradientColors[0],
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
       }}
     >
-      <FontAwesome name="plus" size={22} color="#fff" />
-    </View>
+      <FontAwesome name="plus" size={24} color="#fff" />
+    </LinearGradient>
   );
 }
 
@@ -60,7 +80,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: accentColor,
         tabBarInactiveTintColor: isDark
           ? design.palette.borderLight
-          : "#907898",
+          : design.palette.borderDark,
         tabBarStyle: {
           backgroundColor: isDark
             ? design.palette.surfaceDark
@@ -69,13 +89,21 @@ export default function TabLayout() {
             ? design.palette.borderDark
             : design.palette.borderLight,
           borderTopWidth: 1,
-          height: design.density === "compact" ? 56 : 62,
+          height: design.density === "compact" ? 60 : 66,
           paddingBottom: 8,
-          paddingTop: design.density === "compact" ? 2 : 4,
+          paddingTop: design.density === "compact" ? 4 : 6,
+          ...applyShadow({
+            color: "#000",
+            offset: { width: 0, height: -2 },
+            opacity: 0.05,
+            radius: 8,
+            elevation: 8,
+          }),
         },
         tabBarLabelStyle: {
-          fontSize: scaleFont(11, design.fontScale),
+          fontSize: scaleFont(10, design.fontScale),
           fontWeight: "600",
+          marginTop: -2,
         },
       }}
     >
@@ -104,7 +132,7 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <AddTabIcon
               focused={focused}
-              accentColor={accentColor}
+              gradientColors={design.gradients.hero.colors}
               cornerRadius={getCornerRadius(design.radius, "pill")}
             />
           ),

@@ -1,50 +1,26 @@
 import { useSettingsStore } from "@/src/store/settingsStore";
 import {
-    getButtonPadding,
-    getCornerRadius,
-    resolveRuntimeDesign,
-    scaleFont,
+  applyShadow,
+  getButtonPadding,
+  getCornerRadius,
+  resolveRuntimeDesign,
+  scaleFont,
 } from "@/src/theme/designRuntime";
 import React from "react";
-import {
-    ActivityIndicator,
-    Text,
-    TouchableOpacity,
-    TouchableOpacityProps,
-} from "react-native";
+import { ActivityIndicator, Text } from "react-native";
+import { ScalePress } from "../animated/ScalePress";
 
-interface CandyButtonProps extends TouchableOpacityProps {
+interface CandyButtonProps {
   title: string;
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
   icon?: React.ReactNode;
   loading?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
+  className?: string;
+  style?: any;
 }
-
-const variantStyles: Record<string, { container: string; text: string }> = {
-  primary: {
-    container: "bg-candy-pink",
-    text: "text-white font-semibold",
-  },
-  secondary: {
-    container: "bg-candy-purple",
-    text: "text-white font-semibold",
-  },
-  outline: {
-    container: "bg-transparent border-2 border-candy-pink",
-    text: "text-candy-pink font-semibold",
-  },
-  ghost: {
-    container: "bg-transparent",
-    text: "text-candy-pink font-medium",
-  },
-};
-
-const sizeStyles: Record<string, { container: string; text: string }> = {
-  sm: { container: "px-4 py-2", text: "text-sm" },
-  md: { container: "px-6 py-3", text: "text-base" },
-  lg: { container: "px-8 py-4", text: "text-lg" },
-};
 
 export function CandyButton({
   title,
@@ -53,71 +29,63 @@ export function CandyButton({
   icon,
   loading,
   disabled,
+  onPress,
   className,
   style,
-  ...props
 }: CandyButtonProps) {
-  const v = variantStyles[variant];
-  const s = sizeStyles[size];
   const settings = useSettingsStore((state) => state.settings);
   const design = resolveRuntimeDesign(settings);
 
   const paddings = getButtonPadding(size, design.density);
   const baseFontSize = size === "sm" ? 14 : size === "lg" ? 18 : 16;
 
-  const buttonColorStyle =
+  const isFilled = variant === "primary" || variant === "secondary";
+  const bgColor =
     variant === "primary"
-      ? { backgroundColor: design.palette.primary }
+      ? design.palette.primary
       : variant === "secondary"
-        ? { backgroundColor: design.palette.secondary }
+        ? design.palette.secondary
         : variant === "outline"
-          ? { borderColor: design.palette.primary }
-          : null;
+          ? "transparent"
+          : "transparent";
 
-  const textColorStyle =
-    variant === "outline" || variant === "ghost"
-      ? { color: design.palette.primary }
-      : null;
+  const borderStyle =
+    variant === "outline"
+      ? { borderWidth: 2, borderColor: design.palette.primary }
+      : {};
+
+  const textColor = isFilled ? "#ffffff" : design.palette.primary;
 
   return (
-    <TouchableOpacity
-      className={`flex-row items-center justify-center gap-2 ${v.container} ${s.container} ${disabled || loading ? "opacity-50" : ""} ${className ?? ""}`}
-      style={[
-        {
-          borderRadius: getCornerRadius(design.radius, "pill"),
-          paddingHorizontal: paddings.px,
-          paddingVertical: paddings.py,
-        },
-        buttonColorStyle,
-        style,
-      ]}
+    <ScalePress
+      onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
-      {...props}
+      haptic={!disabled && !loading}
+      className={`flex-row items-center justify-center gap-2 ${disabled || loading ? "opacity-50" : ""} ${className ?? ""}`}
+      style={{
+        borderRadius: getCornerRadius(design.radius, "pill"),
+        paddingHorizontal: paddings.px,
+        paddingVertical: paddings.py,
+        backgroundColor: bgColor,
+        ...borderStyle,
+        ...(isFilled ? applyShadow(design.shadows.button) : {}),
+        ...(typeof style === "object" && style !== null ? style : {}),
+      }}
     >
       {loading ? (
-        <ActivityIndicator
-          color={
-            variant === "outline" || variant === "ghost"
-              ? design.palette.primary
-              : "#fff"
-          }
-          size="small"
-        />
+        <ActivityIndicator color={textColor} size="small" />
       ) : icon ? (
         icon
       ) : null}
       <Text
-        className={`${v.text} ${s.text}`}
-        style={[
-          {
-            fontSize: scaleFont(baseFontSize, design.fontScale),
-          },
-          textColorStyle,
-        ]}
+        className="font-semibold"
+        style={{
+          fontSize: scaleFont(baseFontSize, design.fontScale),
+          color: textColor,
+        }}
       >
         {title}
       </Text>
-    </TouchableOpacity>
+    </ScalePress>
   );
 }

@@ -32,13 +32,15 @@ export function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
       <Text
         className="text-candy-text font-semibold text-center mb-1"
         style={{ fontSize: scaleFont(18, design.fontScale) }}
+        numberOfLines={2}
       >
         {title}
       </Text>
       {subtitle && (
         <Text
           className="text-candy-text-secondary text-center"
-          style={{ fontSize: scaleFont(14, design.fontScale) }}
+          style={{ fontSize: scaleFont(14, design.fontScale), maxWidth: 320 }}
+          numberOfLines={3}
         >
           {subtitle}
         </Text>
