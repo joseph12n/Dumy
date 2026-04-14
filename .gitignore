@@ -43,14 +43,9 @@ backend/.env.*
 /ios
 /android
 
-# deprecated workspace
-web-test/
-.claude/
+# AI skills
+.agents/skills/
+.augment/skills/
 
-# AI contextualization documents (keep README.md visible)
-CHANGELOG.md
+# AI contextualization documents
 CONTEXT.md
-DEBUG_REPORT.md
-GETTING_STARTED.md
-PROJECT_STATUS.md
-ACTUALIZACION_FLUJO_LOCAL.txt
