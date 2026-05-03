@@ -139,6 +139,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="savings"
+        options={{
+          title: "Ahorros",
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="bookmark" color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="chat"
         options={{
           title: "Chat IA",
@@ -147,15 +156,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="user" color={color} focused={focused} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="scan" options={{ href: null }} />
     </Tabs>
   );

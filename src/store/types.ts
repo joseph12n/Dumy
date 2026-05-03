@@ -165,6 +165,42 @@ export interface ReceiptData {
 
 export type ScanStatus = 'idle' | 'capturing' | 'processing' | 'parsed' | 'error';
 
+// ========== SAVINGS / GOALS ==========
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number; // COP pesos
+  currentAmount: number; // COP pesos (sum of contributions)
+  deadline: string | null; // ISO date or null
+  icon: string; // Icon name for Expo Vector Icons
+  color: string; // Hex color code
+  isCompleted: 0 | 1; // SQLite boolean
+  createdAt: string; // ISO 8601 timestamp
+  updatedAt: string; // ISO 8601 timestamp
+}
+
+export type CreateSavingsGoalInput = Omit<
+  SavingsGoal,
+  'id' | 'currentAmount' | 'isCompleted' | 'createdAt' | 'updatedAt'
+>;
+
+export type UpdateSavingsGoalInput = Partial<CreateSavingsGoalInput> & {
+  id: string;
+};
+
+export interface SavingsContribution {
+  id: string;
+  goalId: string;
+  amount: number; // COP pesos
+  note: string;
+  createdAt: string; // ISO 8601 timestamp
+}
+
+export type CreateSavingsContributionInput = Omit<
+  SavingsContribution,
+  'id' | 'createdAt'
+>;
+
 // ========== FINANCIAL CONTEXT FOR AI ==========
 export interface FinancialContext {
   currentMonthSummary: {
@@ -192,4 +228,16 @@ export interface FinancialContext {
   userName?: string;
   /** Optional OCR-extracted receipt data attached to the current context */
   attachedReceipt?: ReceiptData;
+  /** Savings goals and progress */
+  savingsContext?: {
+    totalSaved: number; // COP pesos across all goals
+    activeGoals: Array<{
+      name: string;
+      targetAmount: number;
+      currentAmount: number;
+      progressPercent: number; // 0-100
+      deadline: string | null;
+    }>;
+    completedGoalsCount: number;
+  };
 }

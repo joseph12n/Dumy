@@ -271,6 +271,36 @@ function skillSavingsTips(ctx: FinancialContext): string {
 
   tips.push("💰 *Tips de ahorro personalizados:*\n");
 
+  // Savings goals context (real data!)
+  if (ctx.savingsContext && ctx.savingsContext.activeGoals.length > 0) {
+    tips.push("🎯 *Tus metas de ahorro activas:*\n");
+    for (const goal of ctx.savingsContext.activeGoals) {
+      const remaining = goal.targetAmount - goal.currentAmount;
+      tips.push(
+        `  • ${goal.name}: ${formatCOP(goal.currentAmount)} / ${formatCOP(goal.targetAmount)} (${goal.progressPercent.toFixed(0)}%)`
+      );
+      if (goal.deadline) {
+        const deadlineDate = new Date(goal.deadline);
+        const today = new Date();
+        const monthsLeft = Math.max(1, Math.ceil(
+          (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30)
+        ));
+        const monthlyNeeded = Math.round(remaining / monthsLeft);
+        if (remaining > 0) {
+          tips.push(
+            `    → Necesitas ~${formatCOP(monthlyNeeded)}/mes para completarla a tiempo (${monthsLeft} meses restantes)`
+          );
+        }
+      }
+    }
+    if (ctx.savingsContext.completedGoalsCount > 0) {
+      tips.push(
+        `\n🏆 Ya completaste ${ctx.savingsContext.completedGoalsCount} meta(s). Total ahorrado: ${formatCOP(ctx.savingsContext.totalSaved)}`
+      );
+    }
+    tips.push("");
+  }
+
   // Tip 1: 50/30/20 rule adapted
   if (totalIncome > 0) {
     const necessities = Math.round(totalIncome * 0.5);
@@ -691,6 +721,16 @@ function skillGreeting(ctx: FinancialContext): string {
     response += `  Ingresos: ${formatCOP(totalIncome)}\n`;
     response += `  Gastos: ${formatCOP(totalExpense)}\n`;
     response += `  Balance: ${formatCOP(balance)}\n`;
+  }
+
+  // Savings snapshot
+  if (ctx.savingsContext && ctx.savingsContext.activeGoals.length > 0) {
+    response += `\n💰 Ahorros: ${formatCOP(ctx.savingsContext.totalSaved)} total`;
+    response += ` | ${ctx.savingsContext.activeGoals.length} meta(s) activa(s)`;
+    if (ctx.savingsContext.completedGoalsCount > 0) {
+      response += ` | ${ctx.savingsContext.completedGoalsCount} completada(s)`;
+    }
+    response += "\n";
   }
 
   // Quick status

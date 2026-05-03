@@ -192,7 +192,18 @@ export default function ScanReceiptScreen() {
 
   const handleAddAsExpense = () => {
     if (!receipt) return;
-    router.push("/add");
+    const amount = receipt.total ?? receipt.calculatedSum ?? 0;
+    const description = receipt.vendor ? `Compra en ${receipt.vendor}` : "Gasto escaneado";
+    const date = receipt.date ?? new Date().toISOString().slice(0, 10);
+    router.push({
+      pathname: "/add",
+      params: {
+        scanAmount: String(amount),
+        scanDescription: description,
+        scanDate: date,
+        fromScan: "true",
+      },
+    });
   };
 
   const numbersSum = detectedNumbers.reduce((s, n) => s + n, 0);

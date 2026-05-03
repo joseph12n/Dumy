@@ -11,6 +11,7 @@ import { useTransactionStore } from './transactionStore';
 import { useCategoryStore } from './categoryStore';
 import { useSettingsStore } from './settingsStore';
 import { useChatStore } from './chatStore';
+import { useSavingsStore } from './savingsStore';
 
 interface AppDatabaseProviderProps {
   children: React.ReactNode;
@@ -35,6 +36,7 @@ async function initializeApp(): Promise<void> {
       useCategoryStore.getState().loadBudgets(),
       useTransactionStore.getState().loadTransactions(),
       useSettingsStore.getState().loadSettings(),
+      useSavingsStore.getState().loadGoals(),
     ]);
     console.log('[AppDatabaseProvider] Stores loaded');
 

@@ -22,6 +22,8 @@ interface ChatState {
   loadSession: (sessionId: string) => Promise<void>;
   sendMessage: (content: string, imageUri?: string) => Promise<void>;
   clearSession: () => Promise<void>;
+  /** Delete ALL chat history across all sessions */
+  deleteAllHistory: () => Promise<void>;
   /** Inject a scanned receipt into the conversation */
   attachReceipt: (receipt: ReceiptData) => void;
 }
@@ -193,6 +195,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         error instanceof Error ? error.message : "Unknown error";
       set({ error: errorMessage });
       console.error("[ChatStore] Error clearing session:", error);
+    }
+  },
+
+  deleteAllHistory: async () => {
+    try {
+      const db = await getDatabase();
+      await chatRepository.clearAll(db);
+      get().initSession();
+      console.log("[ChatStore] All chat history deleted");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      set({ error: errorMessage });
+      console.error("[ChatStore] Error deleting all history:", error);
     }
   },
 }));

@@ -1,12 +1,13 @@
 /**
  * Build financial context from live Zustand stores
- * Injects current transaction data into LLM prompts
+ * Injects current transaction data + savings goals into LLM prompts
  */
 
-import { FinancialContext } from '../store/types';
-import { useTransactionStore } from '../store/transactionStore';
 import { useCategoryStore } from '../store/categoryStore';
-import { useStatsStore } from '../store/statsStore';
+import { useSavingsStore } from '../store/savingsStore';
+import { useSettingsStore } from '../store/settingsStore';
+import { useTransactionStore } from '../store/transactionStore';
+import { FinancialContext } from '../store/types';
 import { getMonthRange } from '../utils/dates';
 import { computeCategoryBreakdown } from '../utils/statistics';
 
@@ -20,6 +21,8 @@ export async function buildChatContext(
   const transactions = useTransactionStore.getState().transactions;
   const categories = useCategoryStore.getState().categories;
   const budgets = useCategoryStore.getState().budgets;
+  const goals = useSavingsStore.getState().goals;
+  const settingsMap = useSettingsStore.getState().settings;
 
   // Get current month range
   const today = new Date();
@@ -107,6 +110,32 @@ export async function buildChatContext(
     isOverBudget: boolean;
   }>;
 
+  // Build savings context from current goals
+  const activeGoals = goals.filter((g) => g.isCompleted === 0);
+  const completedGoalsCount = goals.filter((g) => g.isCompleted === 1).length;
+  const totalSaved = goals.reduce((sum, g) => sum + g.currentAmount, 0);
+
+  const savingsContext =
+    goals.length > 0
+      ? {
+          totalSaved,
+          activeGoals: activeGoals.map((g) => ({
+            name: g.name,
+            targetAmount: g.targetAmount,
+            currentAmount: g.currentAmount,
+            progressPercent:
+              g.targetAmount > 0
+                ? Math.min(100, (g.currentAmount / g.targetAmount) * 100)
+                : 0,
+            deadline: g.deadline,
+          })),
+          completedGoalsCount,
+        }
+      : undefined;
+
+  // Resolve user name from settings
+  const userName = settingsMap['profile_name'] || undefined;
+
   return {
     currentMonthSummary: {
       totalIncome,
@@ -116,6 +145,8 @@ export async function buildChatContext(
     },
     recentTransactions,
     budgetAlerts,
+    userName,
+    savingsContext,
   };
 }
 

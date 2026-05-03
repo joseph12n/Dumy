@@ -9,7 +9,10 @@ type Migration = {
  * All migrations in order.
  * Each migration's version must be unique and incrementally greater than the previous.
  */
-const MIGRATIONS: Migration[] = [{ version: 1, up: createInitialSchema }];
+const MIGRATIONS: Migration[] = [
+  { version: 1, up: createInitialSchema },
+  { version: 2, up: createSavingsSchema },
+];
 
 /**
  * Run all pending migrations.
@@ -124,5 +127,41 @@ async function createInitialSchema(db: SQLiteDatabase): Promise<void> {
       ('cat_shopping', 'Compras', 'shopping-bag', '#EC4899', 1),
       ('cat_income', 'Ingresos', 'trending-up', '#22C55E', 1),
       ('cat_other', 'Otros', 'more-horizontal', '#9CA3AF', 1);
+  `);
+}
+
+/**
+ * Migration v2: Savings goals and contributions
+ */
+async function createSavingsSchema(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    -- Savings goals for tracking financial targets
+    CREATE TABLE IF NOT EXISTS savings_goals (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      target_amount INTEGER NOT NULL,
+      current_amount INTEGER NOT NULL DEFAULT 0,
+      deadline TEXT,
+      icon TEXT NOT NULL DEFAULT 'star',
+      color TEXT NOT NULL DEFAULT '#22C55E',
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Individual contributions toward a savings goal
+    CREATE TABLE IF NOT EXISTS savings_contributions (
+      id TEXT PRIMARY KEY,
+      goal_id TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (goal_id) REFERENCES savings_goals(id) ON DELETE CASCADE
+    );
+
+    -- Indexes for savings queries
+    CREATE INDEX IF NOT EXISTS idx_savings_goals_completed ON savings_goals(is_completed);
+    CREATE INDEX IF NOT EXISTS idx_savings_contributions_goal ON savings_contributions(goal_id);
+    CREATE INDEX IF NOT EXISTS idx_savings_contributions_date ON savings_contributions(created_at);
   `);
 }

@@ -3,6 +3,9 @@ import { CandyButton, CandyCard } from "@/src/components/common";
 import { useCategories } from "@/src/hooks/useCategories";
 import { useSetting, useUpdateSetting } from "@/src/hooks/useSettings";
 import { useTransactions } from "@/src/hooks/useTransactions";
+import { useChatStore } from "@/src/store/chatStore";
+import { useSavingsStore } from "@/src/store/savingsStore";
+import { useTransactionStore } from "@/src/store/transactionStore";
 import {
     applyShadow,
     getCornerRadius,
@@ -93,6 +96,59 @@ function StatTile({
   );
 }
 
+function DataAction({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  color,
+  design,
+}: {
+  icon: React.ComponentProps<typeof FontAwesome>["name"];
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  color: string;
+  design: RuntimeDesignType;
+}) {
+  return (
+    <CandyCard variant="glass" animated={false} className="mb-3">
+      <View className="flex-row items-center gap-3">
+        <View
+          className="w-10 h-10 items-center justify-center"
+          style={{ borderRadius: 999, backgroundColor: toRgba(color, 0.15) }}
+        >
+          <FontAwesome name={icon} size={16} color={color} />
+        </View>
+        <View className="flex-1">
+          <Text
+            className="text-candy-text"
+            style={{
+              fontSize: scaleFont(13, design.fontScale),
+              fontWeight: "700",
+            }}
+          >
+            {title}
+          </Text>
+          <Text
+            className="text-candy-text-secondary"
+            style={{ fontSize: scaleFont(11, design.fontScale) }}
+          >
+            {subtitle}
+          </Text>
+        </View>
+      </View>
+      <CandyButton
+        title={title}
+        onPress={onPress}
+        variant="outline"
+        size="sm"
+        className="mt-3"
+      />
+    </CandyCard>
+  );
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -101,6 +157,9 @@ export default function ProfileScreen() {
   const { transactions } = useTransactions();
   const { categories } = useCategories();
   const updateSetting = useUpdateSetting();
+  const deleteAllTransactions = useTransactionStore((s) => s.deleteAllTransactions);
+  const deleteAllChatHistory = useChatStore((s) => s.deleteAllHistory);
+  const deleteAllGoals = useSavingsStore((s) => s.deleteAllGoals);
 
   const savedName =
     useSetting("profile_name", "Usuario Dumy") || "Usuario Dumy";
@@ -163,6 +222,114 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAllTransactions = () => {
+    Alert.alert(
+      "Eliminar transacciones",
+      "¿Seguro que quieres eliminar TODAS las transacciones? Esta accion no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar todo",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllTransactions();
+              Alert.alert("Listo", "Todas las transacciones han sido eliminadas");
+            } catch {
+              Alert.alert("Error", "No se pudieron eliminar las transacciones");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteAllChat = () => {
+    Alert.alert(
+      "Eliminar historial de chat",
+      "¿Seguro que quieres eliminar todo el historial de conversaciones con el bot?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar chat",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllChatHistory();
+              Alert.alert("Listo", "Historial de chat eliminado");
+            } catch {
+              Alert.alert("Error", "No se pudo eliminar el historial");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteAllSavings = () => {
+    Alert.alert(
+      "Eliminar metas de ahorro",
+      "¿Seguro que quieres eliminar TODAS las metas y aportes? Esta accion no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar metas",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllGoals();
+              Alert.alert("Listo", "Todas las metas han sido eliminadas");
+            } catch {
+              Alert.alert("Error", "No se pudieron eliminar las metas");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleFullReset = () => {
+    Alert.alert(
+      "RESETEAR LA APP",
+      "¡ATENCION! Esto eliminara TODOS tus datos:\n• Transacciones\n• Historial de chat\n• Metas de ahorro\n\n¿Estas completamente seguro?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Si, resetear",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Confirmacion final",
+              "Esta es la ultima oportunidad. ¿Realmente quieres borrar TODO?",
+              [
+                { text: "No, cancelar", style: "cancel" },
+                {
+                  text: "BORRAR TODO",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      await Promise.all([
+                        deleteAllTransactions(),
+                        deleteAllChatHistory(),
+                        deleteAllGoals(),
+                      ]);
+                      Alert.alert(
+                        "App reseteada",
+                        "Todos los datos han sido eliminados correctamente",
+                      );
+                    } catch {
+                      Alert.alert("Error", "Hubo un error al resetear la app");
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -307,7 +474,78 @@ export default function ProfileScreen() {
           </CandyCard>
         </FadeInView>
 
-        <FadeInView delay={170} className="mx-5 mt-5 mb-10">
+        {/* Data Management Section */}
+        <FadeInView delay={160} className="mx-5 mt-5">
+          <SectionTitle
+            title="Gestion de datos"
+            subtitle="Elimina o resetea datos de la app para comenzar de nuevo"
+            design={design}
+          />
+
+          <DataAction
+            icon="exchange"
+            title="Eliminar transacciones"
+            subtitle={`Elimina las ${transactions.length} transacciones registradas`}
+            onPress={handleDeleteAllTransactions}
+            color="#F59E0B"
+            design={design}
+          />
+
+          <DataAction
+            icon="comments"
+            title="Eliminar historial de chat"
+            subtitle="Borra todas las conversaciones con el bot de IA"
+            onPress={handleDeleteAllChat}
+            color="#6366F1"
+            design={design}
+          />
+
+          <DataAction
+            icon="bookmark"
+            title="Eliminar metas de ahorro"
+            subtitle="Elimina todas las metas y aportes de ahorro"
+            onPress={handleDeleteAllSavings}
+            color="#059669"
+            design={design}
+          />
+
+          <CandyCard variant="glass" animated={false} className="mb-3">
+            <View className="flex-row items-center gap-3">
+              <View
+                className="w-10 h-10 items-center justify-center"
+                style={{ borderRadius: 999, backgroundColor: toRgba("#EF4444", 0.15) }}
+              >
+                <FontAwesome name="warning" size={16} color="#EF4444" />
+              </View>
+              <View className="flex-1">
+                <Text
+                  className="text-candy-text"
+                  style={{
+                    fontSize: scaleFont(13, design.fontScale),
+                    fontWeight: "700",
+                  }}
+                >
+                  Resetear la app
+                </Text>
+                <Text
+                  className="text-candy-text-secondary"
+                  style={{ fontSize: scaleFont(11, design.fontScale) }}
+                >
+                  Elimina TODOS los datos de golpe (NO se puede deshacer)
+                </Text>
+              </View>
+            </View>
+            <CandyButton
+              title="Resetear toda la app"
+              onPress={handleFullReset}
+              variant="outline"
+              size="sm"
+              className="mt-3"
+            />
+          </CandyCard>
+        </FadeInView>
+
+        <FadeInView delay={200} className="mx-5 mt-3 mb-10">
           <SectionTitle
             title="Configuracion de la app"
             subtitle="Los ajustes visuales y del sistema estan en una seccion dedicada"

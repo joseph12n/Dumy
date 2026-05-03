@@ -251,4 +251,11 @@ export const transactionRepository = {
     );
     return result?.count || 0;
   },
+
+  /**
+   * Delete all transactions (for data reset)
+   */
+  async deleteAll(db: SQLiteDatabase): Promise<void> {
+    await db.runAsync('DELETE FROM transactions');
+  },
 };

@@ -14,6 +14,7 @@ interface TransactionState {
   addTransaction: (input: CreateTransactionInput) => Promise<Transaction>;
   updateTransaction: (input: UpdateTransactionInput) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  deleteAllTransactions: () => Promise<void>;
 }
 
 export const useTransactionStore = create<TransactionState>((set, get) => ({
@@ -100,6 +101,21 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       set({ error: errorMessage });
       console.error('[TransactionStore] Error deleting transaction:', error);
+      throw error;
+    }
+  },
+
+  deleteAllTransactions: async () => {
+    try {
+      const db = await getDatabase();
+      await transactionRepository.deleteAll(db);
+      set({ transactions: [] });
+      useStatsStore.getState().invalidate();
+      console.log('[TransactionStore] All transactions deleted');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      set({ error: errorMessage });
+      console.error('[TransactionStore] Error deleting all transactions:', error);
       throw error;
     }
   },

@@ -12,8 +12,8 @@ import {
 import { parseCOPInput } from "@/src/utils/currency";
 import { todayISO } from "@/src/utils/dates";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -48,12 +48,30 @@ export default function AddTransactionScreen() {
   const settings = useSettingsStore((s) => s.settings);
   const design = resolveRuntimeDesign(settings);
 
+  const params = useLocalSearchParams<{
+    scanAmount?: string;
+    scanDescription?: string;
+    scanDate?: string;
+    fromScan?: string;
+  }>();
+
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [date, setDate] = useState(todayISO());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fromScan, setFromScan] = useState(false);
+
+  // Pre-fill from scan data
+  useEffect(() => {
+    if (params.fromScan === "true") {
+      setFromScan(true);
+      if (params.scanAmount) setAmount(params.scanAmount);
+      if (params.scanDescription) setDescription(params.scanDescription);
+      if (params.scanDate && isValidISODate(params.scanDate)) setDate(params.scanDate);
+    }
+  }, [params.fromScan, params.scanAmount, params.scanDescription, params.scanDate]);
 
   const handleSubmit = async () => {
     if (!amount.trim()) {
@@ -123,6 +141,14 @@ export default function AddTransactionScreen() {
             >
               Registra tu gasto o ingreso siguiendo la linea grafica Dumy.
             </Text>
+            {fromScan && (
+              <View className="flex-row items-center gap-2 mt-2 px-3 py-2 rounded-lg" style={{ backgroundColor: "#059669" + "20" }}>
+                <FontAwesome name="camera" size={13} color="#059669" />
+                <Text style={{ fontSize: scaleFont(12, design.fontScale), color: "#059669", fontWeight: "700" }}>
+                  Datos del recibo escaneado
+                </Text>
+              </View>
+            )}
           </FadeInView>
 
           {/* Upload / Manual buttons */}
